@@ -1,0 +1,21 @@
+.fm { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; align-items: start; }
+.fm__main { display: grid; gap: 16px; }
+.fm h2 { font-size: 20px; margin: 0 0 6px; }
+.fm .fm__lead { margin: 0 0 16px; }
+.fm__status { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 6px; }
+.fm__status li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 14px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.fm__url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+.fm__note { color: var(--muted); text-align: right; max-width: 320px; }
+.fm__dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+.fm__dot.is-ok { background: #22a35a; } .fm__dot.is-bad { background: var(--danger); } .fm__dot.is-loading { background: #e0a100; }
+.fm__presets .cms-label { margin-bottom: 8px; }
+.fm__detected { margin: 4px 0 18px; display: grid; gap: 8px; }
+.fm__family { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.fm__family span { display: flex; gap: 6px; flex-wrap: wrap; }
+.fm__reset { margin-top: 4px; }
+.fm__preview { position: sticky; top: 84px; }
+.fm__h { font-family: var(--pb-heading-font, sans-serif); font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; }
+.fm__p { font-family: var(--pb-body-font, sans-serif); margin: 0 0 12px; }
+.fm__stacks { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; }
+.fm__stacks dt { color: var(--muted); } .fm__stacks dd { margin: 0; font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-word; }
+@media (max-width: 960px) { .fm { grid-template-columns: 1fr; } .fm__preview { position: static; } .fm__note { display: none; } }

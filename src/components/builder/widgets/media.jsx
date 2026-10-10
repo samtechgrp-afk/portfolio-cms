@@ -1,0 +1,225 @@
+import { useEffect, useState } from 'react';
+import { Icon } from '../icons.jsx';
+import { ALIGN, LinkWrap, Placeholder, SandboxFrame, num, opts } from './shared.jsx';
+
+/** Turns a pasted video link into something embeddable. */
+export function toVideoEmbed(raw) {
+  let url;
+  try { url = new URL((raw || '').trim()); } catch { return null; }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  const host = url.hostname.replace(/^www\./, '');
+  if (host === 'youtu.be') return { kind: 'iframe', src: `https://www.youtube-nocookie.com/embed/${url.pathname.slice(1)}` };
+  if (host === 'youtube.com' || host === 'm.youtube.com') {
+    const id = url.searchParams.get('v') || url.pathname.match(/^\/(?:shorts|embed)\/([\w-]+)/)?.[1];
+    return id ? { kind: 'iframe', src: `https://www.youtube-nocookie.com/embed/${id}` } : null;
+  }
+  if (host === 'vimeo.com') {
+    const id = url.pathname.match(/\/(\d+)/)?.[1];
+    return id ? { kind: 'iframe', src: `https://player.vimeo.com/video/${id}` } : null;
+  }
+  if (host === 'drive.google.com') {
+    const id = url.pathname.match(/\/file\/d\/([\w-]+)/)?.[1];
+    return id ? { kind: 'iframe', src: `https://drive.google.com/file/d/${id}/preview` } : null;
+  }
+  if (/\.(mp4|webm|ogg)$/i.test(url.pathname)) return { kind: 'file', src: url.href };
+  return { kind: 'iframe', src: url.href };
+}
+
+function Video({ props }) {
+  const ratio = props.aspect || '16/9';
+  if (props.mode === 'html') {
+    return props.code?.trim()
+      ? <div className="pb-media" style={{ aspectRatio: ratio }}><SandboxFrame code={props.code} height="100%" title="Embedded video" /></div>
+      : <Placeholder icon="video">Paste your embed code in the properties panel.</Placeholder>;
+  }
+  const embed = toVideoEmbed(props.url);
+  if (!embed) return <Placeholder icon="video">Add a YouTube, Vimeo, Google Drive or .mp4 link.</Placeholder>;
+  return (
+    <div className="pb-media" style={{ aspectRatio: ratio }}>
+      {embed.kind === 'file'
+        ? <video src={embed.src} controls preload="metadata" />
+        : <iframe src={embed.src} title="Video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />}
+    </div>
+  );
+}
+
+const RATIOS = [['auto', 'Original'], ['1/1', 'Square'], ['4/3', '4:3'], ['3/2', '3:2'], ['16/9', '16:9']];
+const imageItem = { url: '', alt: '' };
+const imageFields = [{ key: 'url', label: 'Image link', type: 'url' }, { key: 'alt', label: 'Description (alt text)', type: 'text' }];
+
+function Tile({ item, ratio }) {
+  return item.url
+    ? <img src={item.url} alt={item.alt || ''} loading="lazy" referrerPolicy="no-referrer" style={ratio !== 'auto' ? { aspectRatio: ratio } : undefined} />
+    : <div className="pb-tile-empty" style={{ aspectRatio: ratio === 'auto' ? '4/3' : ratio }}><Icon name="image" size={22} /></div>;
+}
+
+function Carousel({ props, editing }) {
+  const slides = (props.images || []).length ? props.images : [imageItem];
+  const n = slides.length;
+  const mode = props.mode;
+  const perView = mode === 'carousel' ? Math.max(1, Math.min(num(props.perView, 3), n)) : 1;
+  const max = mode === 'slideshow' ? n - 1 : Math.max(0, n - perView);
+  const [i, setI] = useState(0);
+  const idx = Math.min(i, max);
+  const go = (d) => setI((x) => { const v = Math.min(x, max) + d; return v > max ? 0 : v < 0 ? max : v; });
+
+  useEffect(() => {
+    if (!props.autoplay || editing || n < 2) return undefined;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
+    const t = setInterval(() => go(1), Math.max(1, num(props.interval, 4)) * 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.autoplay, props.interval, editing, n, max]);
+
+  const ratio = props.ratio || '16/9';
+  return (
+    <div className={`pb-carousel is-${mode}`} role="region" aria-roledescription="carousel" aria-label="Image carousel">
+      <div className="pb-carousel__viewport">
+        {mode === 'slideshow' ? (
+          slides.map((s, k) => (
+            <figure key={k} className={`pb-slide ${k === idx ? 'is-active' : ''}`} aria-hidden={k !== idx} style={{ aspectRatio: ratio }}>
+              <Tile item={s} ratio="auto" />
+              {s.caption && <figcaption>{s.caption}</figcaption>}
+            </figure>
+          ))
+        ) : (
+          <div className="pb-track" style={{ transform: `translateX(-${idx * (100 / perView)}%)` }}>
+            {slides.map((s, k) => (
+              <figure key={k} className="pb-slide" style={{ flex: `0 0 ${100 / perView}%`, aspectRatio: mode === 'slider' ? ratio : undefined }}>
+                <Tile item={s} ratio={mode === 'slider' ? 'auto' : ratio} />
+                {s.caption && <figcaption>{s.caption}</figcaption>}
+              </figure>
+            ))}
+          </div>
+        )}
+        {props.arrows && max > 0 && (
+          <>
+            <button type="button" className="pb-arrow is-prev" aria-label="Previous slide" onClick={() => go(-1)} tabIndex={editing ? -1 : 0}><Icon name="chevron-left" size={22} /></button>
+            <button type="button" className="pb-arrow is-next" aria-label="Next slide" onClick={() => go(1)} tabIndex={editing ? -1 : 0}><Icon name="chevron-right" size={22} /></button>
+          </>
+        )}
+      </div>
+      {props.dots && max > 0 && (
+        <div className="pb-dots">
+          {Array.from({ length: max + 1 }, (_, k) => (
+            <button type="button" key={k} className={k === idx ? 'is-active' : ''} aria-label={`Go to slide ${k + 1}`} aria-current={k === idx} onClick={() => setI(k)} tabIndex={editing ? -1 : 0} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SoundCloud({ props }) {
+  let ok = false;
+  try { const h = new URL(props.url).hostname.replace(/^www\./, ''); ok = h === 'soundcloud.com' || h === 'on.soundcloud.com'; } catch { ok = false; }
+  if (!ok) return <Placeholder icon="music">Add a soundcloud.com track or playlist link.</Placeholder>;
+  const q = new URLSearchParams({
+    url: props.url, color: props.color || '#0057ff', auto_play: 'false', hide_related: 'true',
+    show_comments: 'false', show_user: 'true', show_reposts: 'false', visual: props.visual ? 'true' : 'false',
+  });
+  return <iframe className="pb-frame" title="SoundCloud player" loading="lazy" allow="autoplay" style={{ height: num(props.height, 166) }} src={`https://w.soundcloud.com/player/?${q}`} />;
+}
+
+function Maps({ props }) {
+  if (!props.query?.trim()) return <Placeholder icon="map-pin">Enter an address or place name.</Placeholder>;
+  const q = new URLSearchParams({ q: props.query, t: props.type || 'm', z: String(num(props.zoom, 12)), output: 'embed' });
+  return <iframe className="pb-frame" title={`Map of ${props.query}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" style={{ height: num(props.height, 360) }} src={`https://maps.google.com/maps?${q}`} />;
+}
+
+export const mediaWidgets = [
+  {
+    type: 'image', label: 'Image', category: 'media', icon: 'image',
+    description: 'A single image with optional caption and link.',
+    defaults: { url: '', alt: '', caption: '', link: '', width: 'full', align: 'center', rounded: true },
+    fields: [
+      { key: 'url', label: 'Image link', type: 'url', help: 'A public https:// link, such as a Google Drive thumbnail link.' },
+      { key: 'alt', label: 'Description (alt text)', type: 'text' },
+      { key: 'caption', label: 'Caption', type: 'text' },
+      { key: 'link', label: 'Link when clicked (optional)', type: 'url' },
+      { key: 'width', label: 'Width', type: 'select', options: opts('auto', 'full', 'half') },
+      ALIGN,
+      { key: 'rounded', label: 'Rounded corners', type: 'toggle' },
+    ],
+    Render: ({ props }) => !props.url ? <Placeholder>Add an image link in the properties panel.</Placeholder> : (
+      <figure className={`pb-image w-${props.width} a-${props.align} ${props.rounded ? 'is-round' : ''}`}>
+        <LinkWrap href={props.link} newTab><img src={props.url} alt={props.alt || ''} loading="lazy" referrerPolicy="no-referrer" /></LinkWrap>
+        {props.caption && <figcaption>{props.caption}</figcaption>}
+      </figure>
+    ),
+  },
+  {
+    type: 'video', label: 'Video', category: 'media', icon: 'video',
+    description: 'Embed a video from a link, or paste your own embed code.',
+    defaults: { mode: 'url', url: '', code: '', aspect: '16/9' },
+    fields: [
+      { key: 'mode', label: 'Source', type: 'select', options: [['url', 'Embed URL'], ['html', 'HTML embed code']] },
+      { key: 'url', label: 'Video link', type: 'url', showIf: (p) => p.mode !== 'html', help: 'YouTube, Vimeo, Google Drive or a direct .mp4 link.' },
+      { key: 'code', label: 'Embed code', type: 'textarea', rows: 6, mono: true, showIf: (p) => p.mode === 'html', help: 'Runs in a sandbox so it cannot affect the rest of the page.' },
+      { key: 'aspect', label: 'Aspect ratio', type: 'select', options: [['16/9', '16:9'], ['4/3', '4:3'], ['1/1', 'Square'], ['9/16', 'Vertical 9:16']] },
+    ],
+    Render: Video,
+  },
+  {
+    type: 'gallery', label: 'Basic Gallery', category: 'media', icon: 'grid',
+    description: 'A tidy grid of images.',
+    defaults: { images: [{ ...imageItem }, { ...imageItem }, { ...imageItem }], columns: '3', gap: 'md', ratio: '1/1' },
+    fields: [
+      { key: 'columns', label: 'Columns', type: 'select', options: opts('2', '3', '4', '5') },
+      { key: 'gap', label: 'Gap', type: 'select', options: opts('sm', 'md', 'lg') },
+      { key: 'ratio', label: 'Image shape', type: 'select', options: RATIOS },
+      { key: 'images', label: 'Images', type: 'list', max: 40, newItem: imageItem, itemLabel: (it, i) => it.alt || `Image ${i + 1}`, itemFields: imageFields },
+    ],
+    Render: ({ props }) => (
+      <div className={`pb-gallery pb-gap-${props.gap}`} style={{ '--cols': num(props.columns, 3) }}>
+        {(props.images || []).map((it, i) => <div key={i} className="pb-gallery__item"><Tile item={it} ratio={props.ratio} /></div>)}
+      </div>
+    ),
+  },
+  {
+    type: 'carousel', label: 'Image Carousel', category: 'media', icon: 'layers',
+    description: 'Slider, multi-image carousel or fading slideshow.',
+    defaults: {
+      mode: 'slider', images: [{ ...imageItem, caption: '' }, { ...imageItem, caption: '' }, { ...imageItem, caption: '' }],
+      perView: '3', ratio: '16/9', arrows: true, dots: true, autoplay: false, interval: 4,
+    },
+    fields: [
+      { key: 'mode', label: 'Mode', type: 'select', options: [['slider', 'Slider (one image, slides across)'], ['carousel', 'Carousel (several images at once)'], ['slideshow', 'Slideshow (one image, fades)']] },
+      { key: 'perView', label: 'Images visible at once', type: 'select', options: opts('2', '3', '4'), showIf: (p) => p.mode === 'carousel' },
+      { key: 'ratio', label: 'Image shape', type: 'select', options: RATIOS.filter(([v]) => v !== 'auto') },
+      { key: 'arrows', label: 'Show arrows', type: 'toggle' },
+      { key: 'dots', label: 'Show dots', type: 'toggle' },
+      { key: 'autoplay', label: 'Autoplay', type: 'toggle' },
+      { key: 'interval', label: 'Seconds per slide', type: 'number', min: 1, max: 30, showIf: (p) => p.autoplay },
+      {
+        key: 'images', label: 'Slides', type: 'list', max: 30, newItem: { ...imageItem, caption: '' }, itemLabel: (it, i) => it.alt || `Slide ${i + 1}`,
+        itemFields: [...imageFields, { key: 'caption', label: 'Caption (optional)', type: 'text' }],
+      },
+    ],
+    Render: Carousel,
+  },
+  {
+    type: 'soundcloud', label: 'SoundCloud', category: 'media', icon: 'music',
+    description: 'Embed a SoundCloud track or playlist.',
+    defaults: { url: '', height: '166', color: '#0057ff', visual: false },
+    fields: [
+      { key: 'url', label: 'SoundCloud link', type: 'url' },
+      { key: 'height', label: 'Player', type: 'select', options: [['166', 'Compact'], ['300', 'Standard'], ['450', 'Tall']] },
+      { key: 'visual', label: 'Visual player (artwork)', type: 'toggle' },
+      { key: 'color', label: 'Accent colour', type: 'color' },
+    ],
+    Render: SoundCloud,
+  },
+  {
+    type: 'maps', label: 'Google Maps', category: 'media', icon: 'map-pin',
+    description: 'Show a place or address on an embedded map.',
+    defaults: { query: 'Takoradi, Ghana', zoom: 12, height: 360, type: 'm' },
+    fields: [
+      { key: 'query', label: 'Address or place', type: 'text' },
+      { key: 'zoom', label: 'Zoom', type: 'range', min: 1, max: 20, step: 1 },
+      { key: 'height', label: 'Height (px)', type: 'range', min: 200, max: 700, step: 20 },
+      { key: 'type', label: 'Map type', type: 'select', options: [['m', 'Map'], ['k', 'Satellite']] },
+    ],
+    Render: Maps,
+  },
+];
