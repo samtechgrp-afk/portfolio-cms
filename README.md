@@ -44,12 +44,14 @@ src/
 {
   "id": "proj-123", "title": "Project Title", "slug": "project-title", "summary": "...",
   "coverUrl": "...", "liveUrl": "", "categories": ["Design"], "status": "draft", "createdAt": "2026-10-09",
-  "typography": { "fontUrl": "", "headingFont": "sans-serif", "bodyFont": "sans-serif" },
+  "typography": { "fontUrl": "", "headingFont": "sans-serif", "bodyFont": "sans-serif",
+                  "customFontName": "", "customFontUrl": "", "fontFormat": "" },
   "blocks": [ { "id": "blk_123", "type": "heading", "props": { "text": "Hello", "level": "h2" } } ]
 }
 ```
 
 - `fontUrl` holds one stylesheet link per line (up to 6).
+- `customFontName`, `customFontUrl` and `fontFormat` (`truetype`, `opentype`, `woff` or `woff2`) describe one uploaded font file.
 - Layout blocks (Container, Grid, Sidebar) keep nested blocks in `props.slots`, e.g. `props.slots.col1 = [ ...blocks ]`.
 - Projects saved by the first version are migrated automatically: `coverImageUrl` becomes `coverUrl`, and a Markdown `body` becomes a Text Editor block.
 
@@ -77,6 +79,22 @@ import { PageRenderer } from './components/builder';
 <PageRenderer blocks={p.blocks} typography={p.typography} title={p.title} />
 ```
 
+## Home page
+
+Click **Edit home page** on the dashboard. It opens (or creates) the project with the slug `home`. When it is **published** and has at least one block, the portfolio site shows it at `/` instead of the default layout. The slug is locked, `home` never appears in the Projects cards, and `/work/home` redirects to `/`. If it is a draft, empty, or Supabase is unreachable, the site shows its default layout.
+
+## Custom fonts
+
+**Typography, Upload your own font** accepts .ttf, .otf, .woff and .woff2 (5 MB maximum). The file's type is checked by its first bytes, not just its name. It is stored in the public Supabase Storage bucket `fonts` under a random name, and the project keeps `{ customFontName, customFontUrl, fontFormat }`. `injectFontFace(name, url, format)` in `src/components/typography.js` adds the `@font-face` rule, and `PageRenderer` calls it, so visitors see the font. Use the name in the heading or body fields (the Use for headings and Use for body buttons do this).
+
+- One uploaded font per project. Replacing or removing it deletes the old file after you save, and deleting a project deletes its font. A file you upload and then abandon without saving is left in the bucket; delete it in the Supabase dashboard under Storage.
+- Only upload fonts you have a licence to use on the web.
+- Uploads need the Supabase connection. In LocalStorage mode the upload section is disabled.
+
+## Shared code
+
+The page renderer (`PageRenderer.jsx`, `WidgetRegistry.jsx`, `widgets/`, `typography.js`, `page.css`, `markdown.js`) is also used by the portfolio site repo. After changing any of these, run `npm run sync -- ../portfolio-cms` inside the site repo to copy them across.
+
 ## Supabase (connected)
 
 The CMS is wired to the Supabase project **samuel-portfolio** (London, `mzgbiqerlizirlybrkvp`). The settings are in `.env`; clear both values to fall back to LocalStorage with no login.
@@ -85,7 +103,8 @@ The CMS is wired to the Supabase project **samuel-portfolio** (London, `mzgbiqer
 - **Row-level security:** anyone can read rows with `status = 'published'`. Only the signed-in owner (`muelprah@gmail.com`) can read drafts and create, edit or delete.
 - **Login:** `src/cms/lib/auth.js` (email and password). Create the user once in the Supabase dashboard: Authentication, Users, Add user, tick Auto Confirm. Then turn off "Allow new users to sign up" under Authentication, Sign In / Providers.
 - **Import:** after you sign in, a banner offers to move projects saved in this browser into the database. It skips slugs that already exist.
-- **Data layer:** `src/cms/lib/supabaseStore.js` has the same interface as the LocalStorage store.
+- **Data layer:** `src/cms/lib/supabaseStore.js` has the same interface as the LocalStorage store, plus `uploadFont` and `removeFont`.
+- **Storage:** bucket `fonts` is public to read. Only the owner can upload or delete. Allowed types: font/ttf, font/otf, font/woff, font/woff2.
 
 ## Hosting on GitHub and Vercel
 

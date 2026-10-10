@@ -8,7 +8,7 @@ import {
   findBlock, insertAfter, insertBlock, moveBlock, patchProps, removeBlock,
 } from '../../components/builder/index.js';
 import { Icon } from '../../components/builder/icons.jsx';
-import { DEFAULT_TYPOGRAPHY, parseFontUrls, useFontLinks } from '../../components/typography.js';
+import { DEFAULT_TYPOGRAPHY, parseFontUrls, useTypographyAssets } from '../../components/typography.js';
 import { slugify, validateProject } from '../lib/validation.js';
 import { today } from '../lib/format.js';
 
@@ -18,13 +18,18 @@ const EMPTY = {
 const TABS = [['details', 'Details'], ['typography', 'Typography'], ['builder', 'Page builder'], ['preview', 'Preview']];
 const DEVICES = [['desktop', 'Desktop', '100%'], ['tablet', 'Tablet', 768], ['mobile', 'Mobile', 390]];
 
-export default function ProjectEditor({ project, projects, saving, onSave, onCancel }) {
+const HOME_SLUG = 'home';
+
+/**
+ * `template` pre-fills a new project (used for the Home page). `uploadFont(file) -> { url }` enables font uploads.
+ */
+export default function ProjectEditor({ project, projects, saving, onSave, onCancel, template, uploadFont }) {
   const isNew = !project;
-  const initial = useRef(project ? { ...project } : { ...EMPTY, createdAt: today(), typography: { ...DEFAULT_TYPOGRAPHY }, blocks: [] });
+  const initial = useRef(project ? { ...project } : { ...EMPTY, createdAt: today(), typography: { ...DEFAULT_TYPOGRAPHY }, blocks: [], ...template });
   const [values, setValues] = useState(initial.current);
   const [touched, setTouched] = useState({});
   const [submitted, setSubmitted] = useState(false);
-  const [slugEdited, setSlugEdited] = useState(!isNew);
+  const [slugEdited, setSlugEdited] = useState(!isNew || !!template?.slug);
   const [tab, setTab] = useState('details');
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [coverBroken, setCoverBroken] = useState(false);
@@ -36,7 +41,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
   const blocksRef = useRef(values.blocks);
   blocksRef.current = values.blocks;
 
-  useFontLinks(parseFontUrls(values.typography.fontUrl));
+  useTypographyAssets(values.typography);
 
   const errors = useMemo(() => validateProject(values, projects), [values, projects]);
   const dirty = JSON.stringify(values) !== JSON.stringify(initial.current);
@@ -144,7 +149,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
       <div className="cms-pagehead">
         <div>
           <button type="button" className="cms-linkbtn cms-back" onClick={cancel}>Back to projects</button>
-          <h1 id="edit-title">{isNew ? 'New project' : 'Edit project'}</h1>
+          <h1 id="edit-title">{values.slug === HOME_SLUG ? 'Home page' : isNew ? 'New project' : 'Edit project'}</h1>
         </div>
       </div>
 
@@ -172,8 +177,12 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
               <Field label="Title" required error={err('title')}>
                 {(p) => <input {...p} className="cms-input" value={values.title} maxLength={140} onChange={(e) => set('title', e.target.value)} onBlur={blur('title')} autoFocus={isNew} />}
               </Field>
-              <Field label="Slug" required error={err('slug')} hint={`Used in the project link: /work/${values.slug || 'your-slug'}`}>
-                {(p) => <input {...p} className="cms-input" value={values.slug} onChange={(e) => { setSlugEdited(true); set('slug', slugify(e.target.value)); }} onBlur={blur('slug')} />}
+              <Field label="Slug" required error={err('slug')}
+                hint={initial.current.slug === HOME_SLUG
+                  ? 'This is your home page. When it is published with at least one block, it replaces the default layout on the main page of your site.'
+                  : `Used in the project link: /work/${values.slug || 'your-slug'}`}>
+                {(p) => <input {...p} className="cms-input" value={values.slug} readOnly={initial.current.slug === HOME_SLUG}
+                  onChange={(e) => { setSlugEdited(true); set('slug', slugify(e.target.value)); }} onBlur={blur('slug')} />}
               </Field>
               <Field label="Summary" error={err('summary')} hint={`${values.summary.length} of 200 characters`}>
                 {(p) => <textarea {...p} className="cms-input" rows={4} value={values.summary} onChange={(e) => set('summary', e.target.value)} onBlur={blur('summary')} />}
@@ -221,7 +230,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
 
         {tab === 'typography' && (
           <div role="tabpanel" id="panel-typography" aria-labelledby="tab-typography">
-            <FontManager value={values.typography} onChange={(t) => set('typography', t)} errors={errors} />
+            <FontManager value={values.typography} onChange={(t) => set('typography', t)} errors={errors} onUploadFont={uploadFont} />
           </div>
         )}
 

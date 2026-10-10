@@ -19,3 +19,10 @@
 .fm__stacks { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; }
 .fm__stacks dt { color: var(--muted); } .fm__stacks dd { margin: 0; font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-word; }
 @media (max-width: 960px) { .fm { grid-template-columns: 1fr; } .fm__preview { position: static; } .fm__note { display: none; } }
+
+/* upload */
+.fm__file { display: block; width: 100%; padding: 10px; border: 1.5px dashed var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 400 15px var(--font); }
+.fm__file::file-selector-button { margin-right: 12px; padding: 6px 14px; border: 1.5px solid var(--ink); border-radius: 999px; background: transparent; color: var(--ink); font: 600 14px var(--font); cursor: pointer; }
+.fm__pick { display: grid; gap: 4px; margin-bottom: 8px; }
+.fm__ok { color: var(--ok); font-weight: 600; }
+.fm__custom { margin-top: 14px; }

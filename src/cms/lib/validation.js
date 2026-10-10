@@ -1,4 +1,4 @@
-import { checkFontUrl, isSafeFontStack, parseFontUrls } from '../../components/typography.js';
+import { FONT_FORMATS, checkFontUrl, isSafeFamilyName, isSafeFontStack, parseFontUrls } from '../../components/typography.js';
 
 export const STATUSES = ['draft', 'published'];
 
@@ -55,6 +55,13 @@ export function validateProject(p, all = []) {
   ['headingFont', 'bodyFont'].forEach((k) => {
     if (!isSafeFontStack(p.typography?.[k])) errors[`typography.${k}`] = 'Use letters, numbers, spaces, commas, quotes and hyphens only (max 120 characters).';
   });
+
+  const t = p.typography || {};
+  if (t.customFontUrl || t.customFontName || t.fontFormat) {
+    if (!isSafeFamilyName(t.customFontName)) errors['typography.customFontName'] = 'Name the font using letters, numbers, spaces, hyphens or underscores (max 60).';
+    if (!t.customFontUrl || !isHttpUrl(t.customFontUrl) || !t.customFontUrl.startsWith('https://')) errors['typography.customFontUrl'] = 'The uploaded font needs a valid https:// link. Upload the file again.';
+    if (!Object.values(FONT_FORMATS).includes(t.fontFormat)) errors['typography.fontFormat'] = 'Unknown font format. Upload the file again.';
+  }
 
   return errors;
 }

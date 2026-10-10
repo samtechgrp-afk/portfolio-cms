@@ -1,6 +1,6 @@
 import './page.css';
 import { BlockView } from './WidgetRegistry.jsx';
-import { parseFontUrls, typographyStyle, useFontLinks } from '../typography.js';
+import { typographyStyle, useTypographyAssets } from '../typography.js';
 
 export function RenderBlocks({ blocks, ctx }) {
   return blocks.map((b) => (
@@ -18,7 +18,7 @@ export function RenderBlocks({ blocks, ctx }) {
 
 /** Read-only page. Use this on the public site: <PageRenderer blocks={p.blocks} typography={p.typography} title={p.title} /> */
 export default function PageRenderer({ blocks = [], typography, title = '', className = '' }) {
-  useFontLinks(parseFontUrls(typography?.fontUrl));
+  useTypographyAssets(typography);
   return (
     <article className={`pb-page ${className}`} style={typographyStyle(typography)}>
       {blocks.length ? <RenderBlocks blocks={blocks} ctx={{ projectTitle: title }} /> : <p className="pb-muted">This page has no content yet.</p>}

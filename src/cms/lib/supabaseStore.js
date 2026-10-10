@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient.js';
+import { FONT_MIME, fontExtension } from '../../components/typography.js';
 
 /**
  * Supabase data layer. Same interface as the LocalStorage store:
@@ -51,6 +52,20 @@ export const supabaseStore = {
     const { data, error } = await supabase.from('projects').update({ status }).eq('id', id).select(COLUMNS).single();
     if (error) fail(error, "Couldn't change the status.");
     return toApp(data);
+  },
+  /** Uploads a font file to the public `fonts` bucket. Returns { url, path }. Names are random, so files never overwrite each other. */
+  async uploadFont(file) {
+    const ext = fontExtension(file.name);
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from('fonts').upload(path, file, { contentType: FONT_MIME[ext], cacheControl: '31536000', upsert: false });
+    if (error) fail(error, "Couldn't upload the font.");
+    return { url: supabase.storage.from('fonts').getPublicUrl(path).data.publicUrl, path };
+  },
+  /** Deletes a previously uploaded font by its public URL. Best effort: a leftover file is harmless. */
+  async removeFont(url) {
+    const path = url?.split('/storage/v1/object/public/fonts/')[1];
+    if (!path) return;
+    await supabase.storage.from('fonts').remove([decodeURIComponent(path)]);
   },
   /** Inserts projects that don't exist yet (matched by slug). Returns the rows that were added. */
   async importProjects(list) {

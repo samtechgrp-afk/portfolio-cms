@@ -30,7 +30,11 @@ function CmsShell({ store, user, onSignOut }) {
   const save = useCallback(async (data) => {
     setSaving(true);
     try {
+      const previous = projects?.find((p) => p.id === data.id);
       const saved = await store.save(data);
+      // The old font file is only deleted once the project no longer points at it.
+      const oldFont = previous?.typography?.customFontUrl;
+      if (oldFont && oldFont !== saved.typography?.customFontUrl) store.removeFont?.(oldFont).catch(() => {});
       setProjects((all) => (all.some((p) => p.id === saved.id) ? all.map((p) => (p.id === saved.id ? saved : p)) : [saved, ...all]));
       toast.success(`"${saved.title}" saved.`);
       setView({ name: 'list' });
@@ -39,11 +43,12 @@ function CmsShell({ store, user, onSignOut }) {
     } finally {
       setSaving(false);
     }
-  }, [store, toast]);
+  }, [projects, store, toast]);
 
   const remove = useCallback(async (project) => {
     try {
       await store.remove(project.id);
+      if (project.typography?.customFontUrl) store.removeFont?.(project.typography.customFontUrl).catch(() => {});
       setProjects((all) => all.filter((p) => p.id !== project.id));
       toast.success(`"${project.title}" deleted.`);
     } catch (e) {
@@ -133,6 +138,10 @@ function CmsShell({ store, user, onSignOut }) {
             projects={projects}
             onCreate={() => setView({ name: 'edit' })}
             onEdit={(project) => setView({ name: 'edit', project })}
+            onEditHome={() => {
+              const home = projects.find((p) => p.slug === 'home');
+              setView(home ? { name: 'edit', project: home } : { name: 'edit', template: { title: 'Home', slug: 'home', summary: 'The home page of my portfolio.' } });
+            }}
             onDelete={remove}
             onToggleStatus={toggleStatus}
             onExport={exportPublished}
@@ -140,8 +149,10 @@ function CmsShell({ store, user, onSignOut }) {
           />
         ) : (
           <ProjectEditor
-            key={view.project?.id ?? 'new'}
+            key={view.project?.id ?? view.template?.slug ?? 'new'}
             project={view.project}
+            template={view.template}
+            uploadFont={store.uploadFont}
             projects={projects}
             saving={saving}
             onSave={save}
