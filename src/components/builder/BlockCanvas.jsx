@@ -4,7 +4,7 @@ import './builder.css';
 import { BlockView, getSlots, getWidget } from './WidgetRegistry.jsx';
 import { Icon } from './icons.jsx';
 import { countNested } from './blockTree.js';
-import { parseFontUrls, typographyStyle, useFontLinks } from '../typography.js';
+import { typographyStyle, useTypographyAssets } from '../typography.js';
 import ConfirmDialog from '../../cms/components/ConfirmDialog.jsx';
 
 const CanvasContext = createContext(null);
@@ -72,7 +72,7 @@ function BlockItem({ block, index, count }) {
 
 export default function BlockCanvas({ blocks, typography, title, selectedId, onSelect, onAdd, onMove, onDuplicate, onDelete }) {
   const [pending, setPending] = useState(null);
-  useFontLinks(parseFontUrls(typography?.fontUrl));
+  useTypographyAssets(typography);
 
   const requestDelete = (block) => (countNested(block) > 0 ? setPending(block) : onDelete(block.id));
   const value = {

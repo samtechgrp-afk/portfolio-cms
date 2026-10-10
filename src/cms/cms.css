@@ -180,3 +180,5 @@ textarea.cms-input { resize: vertical; }
 .cms-banner p { margin: 0; }
 .cms-banner__actions { display: flex; gap: 8px; }
 @media (max-width: 640px) { .cms-bar__user { display: none; } }
+
+.cms-badge--home { margin-left: 8px; background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--blue); font-size: 12px; padding: 1px 10px; }

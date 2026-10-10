@@ -9,7 +9,7 @@ const SORTERS = {
   title: (a, b) => a.title.localeCompare(b.title),
 };
 
-export default function ProjectList({ projects, onCreate, onEdit, onDelete, onToggleStatus, onExport, onAddShowcase }) {
+export default function ProjectList({ projects, onCreate, onEdit, onEditHome, onDelete, onToggleStatus, onExport, onAddShowcase }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [category, setCategory] = useState('all');
@@ -41,6 +41,7 @@ export default function ProjectList({ projects, onCreate, onEdit, onDelete, onTo
           </p>
         </div>
         <div className="cms-pagehead__actions">
+          <button type="button" className="cms-btn" onClick={onEditHome}>Edit home page</button>
           <button type="button" className="cms-btn" onClick={onAddShowcase}>Add test page (all blocks)</button>
           <button type="button" className="cms-btn" onClick={onExport} disabled={!published}>Export published (JSON)</button>
           <button type="button" className="cms-btn cms-btn--primary" onClick={onCreate}>New project</button>
@@ -113,6 +114,7 @@ export default function ProjectList({ projects, onCreate, onEdit, onDelete, onTo
                   </td>
                   <td data-label="Project" className="cms-table__main">
                     <button type="button" className="cms-linkbtn" onClick={() => onEdit(p)}>{p.title}</button>
+                    {p.slug === 'home' && <span className="cms-badge cms-badge--home">Home page</span>}
                     <span className="cms-muted cms-slug">/{p.slug}</span>
                     <span className="cms-muted cms-slug">{countBlocks(p.blocks)} {countBlocks(p.blocks) === 1 ? 'block' : 'blocks'}</span>
                   </td>
