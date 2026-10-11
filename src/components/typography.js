@@ -129,15 +129,24 @@ export async function inspectFontFile(file) {
   return { ext, format: FONT_FORMATS[ext] };
 }
 
-const fontFaces = new Map(); // key -> { el, count }
+const fontFaces = new Map(); // key -> { els, count }
 const UNSAFE_URL = /["'()\\;{}<>\s]/;
+const FORMAT_MIME = { truetype: 'font/ttf', opentype: 'font/otf', woff: 'font/woff', woff2: 'font/woff2' };
+
+export const WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+export const WEIGHT_NAMES = { 100: 'Thin', 200: 'Extra light', 300: 'Light', 400: 'Regular', 500: 'Medium', 600: 'Semi bold', 700: 'Bold', 800: 'Extra bold', 900: 'Black' };
 
 /**
- * Appends an @font-face rule to <head> so a font file can be used by name in CSS.
- * Returns a function that releases it (rules are shared and reference-counted). Returns null when the input is unusable.
+ * Appends an @font-face rule to <head> so a font file can be used by name in CSS, and preloads the file so the
+ * text does not jump when it arrives. Rules are shared and reference-counted, and keyed by family, file, weight and
+ * style, so re-rendering or switching between dark and light mode never removes or re-adds a font.
+ * Returns a function that releases the rule, or null when the input is unusable.
+ *
+ * injectFontFace(fontName, fontUrl, format, { weight = 400, style = 'normal', preload = true })
  */
-export function injectFontFace(fontName, fontUrl, format) {
+export function injectFontFace(fontName, fontUrl, format, { weight = 400, style = 'normal', preload = true } = {}) {
   if (typeof document === 'undefined' || !isSafeFamilyName(fontName) || !Object.values(FONT_FORMATS).includes(format)) return null;
+  if (!WEIGHTS.includes(Number(weight)) || !['normal', 'italic'].includes(style)) return null;
   let href;
   try {
     const u = new URL(fontUrl);
@@ -148,21 +157,90 @@ export function injectFontFace(fontName, fontUrl, format) {
   }
   if (UNSAFE_URL.test(href)) return null;
 
-  const key = `${fontName}|${href}|${format}`;
+  const key = `${fontName}|${href}|${format}|${weight}|${style}`;
   let entry = fontFaces.get(key);
   if (!entry) {
+    const els = [];
+    if (preload) {
+      const link = document.createElement('link');
+      link.rel = 'preload'; link.as = 'font'; link.type = FORMAT_MIME[format]; link.href = href; link.crossOrigin = 'anonymous';
+      link.dataset.cmsFontPreload = fontName;
+      document.head.appendChild(link);
+      els.push(link);
+    }
     const el = document.createElement('style');
     el.dataset.cmsFontFace = fontName;
-    el.textContent = `@font-face{font-family:"${fontName}";src:url("${href}") format("${format}");font-display:swap;}`;
+    el.textContent = `@font-face{font-family:"${fontName}";src:url("${href}") format("${format}");font-weight:${weight};font-style:${style};font-display:swap;}`;
     document.head.appendChild(el);
-    entry = { el, count: 0 };
+    els.push(el);
+    entry = { els, count: 0 };
     fontFaces.set(key, entry);
   }
   entry.count += 1;
   return () => {
     entry.count -= 1;
-    if (entry.count <= 0) { entry.el.remove(); fontFaces.delete(key); }
+    if (entry.count <= 0) { entry.els.forEach((e) => e.remove()); fontFaces.delete(key); }
   };
+}
+
+/** Injects every font record ({ family, fileUrl, format, weight, style }) in the list. Returns one release function. */
+export function injectFontFaces(fonts) {
+  const releases = fonts.map((f) => injectFontFace(f.family, f.fileUrl, f.format, { weight: f.weight, style: f.style })).filter(Boolean);
+  return () => releases.forEach((r) => r());
+}
+
+/* ---- which fonts does a page use? ---- */
+
+const quoteStrip = (s) => s.trim().replace(/^["']|["']$/g, '');
+/** 'Brand Sans', serif -> ['Brand Sans', 'serif'] */
+export const familyList = (stack = '') => stack.split(',').map(quoteStrip).filter(Boolean);
+/** Family name -> CSS font stack. */
+export const stackFor = (family) => `"${family}", sans-serif`;
+
+const FONT_PROP_KEYS = ['font', 'headlineFont', 'subdeckFont'];
+const INLINE_FONT = /\{font:([A-Za-z0-9][A-Za-z0-9 _-]{0,59})\}/g;
+
+/** Lower-cased family names used by the project typography and by any block (including nested ones and inline {font:Name} text). */
+export function collectUsedFamilies(blocks = [], typography = {}) {
+  const used = new Set();
+  const add = (stack) => familyList(stack).forEach((f) => used.add(f.toLowerCase()));
+  add(typography?.headingFont);
+  add(typography?.bodyFont);
+  const walk = (list) => list.forEach((b) => {
+    const p = b.props || {};
+    FONT_PROP_KEYS.forEach((k) => { if (p[k] && p[k] !== 'heading' && p[k] !== 'body') add(p[k]); });
+    ['content', 'text', 'quote'].forEach((k) => { if (typeof p[k] === 'string') for (const m of p[k].matchAll(INLINE_FONT)) used.add(m[1].toLowerCase()); });
+    Object.values(p.slots || {}).forEach(walk);
+  });
+  walk(blocks);
+  return used;
+}
+
+/** CSS rules for a block-level font choice: a family name, 'heading', 'body' or ''. */
+export function fontScopeStyle(font) {
+  if (!font) return null;
+  if (font === 'heading') return { fontFamily: 'var(--pb-heading-font)', '--pb-body-font': 'var(--pb-heading-font)' };
+  if (font === 'body') return { fontFamily: 'var(--pb-body-font)', '--pb-heading-font': 'var(--pb-body-font)' };
+  if (!isSafeFamilyName(font)) return null;
+  const stack = stackFor(font);
+  return { fontFamily: stack, '--pb-heading-font': stack, '--pb-body-font': stack };
+}
+
+/** "Brand-Sans-BoldItalic.ttf" -> { weight: 700, style: 'italic' } (a starting guess the user can change). */
+export function guessWeightStyle(filename = '') {
+  const n = filename.toLowerCase();
+  const rules = [[/thin|hairline/, 100], [/extra-?light|ultra-?light/, 200], [/light/, 300], [/semi-?bold|demi-?bold/, 600], [/extra-?bold|ultra-?bold/, 800], [/black|heavy/, 900], [/bold/, 700], [/medium/, 500]];
+  const hit = rules.find(([re]) => re.test(n));
+  return { weight: hit ? hit[1] : 400, style: /italic|oblique/.test(n) ? 'italic' : 'normal' };
+}
+
+/** "Brand-Sans-BoldItalic.ttf" -> "Brand Sans" */
+export function guessFamily(filename = '') {
+  const base = familyFromFilename(filename)
+    .replace(/\b(thin|hairline|extra ?light|ultra ?light|light|regular|book|normal|medium|semi ?bold|demi ?bold|extra ?bold|ultra ?bold|bold|black|heavy|italic|oblique)+\b/gi, ' ')
+    .replace(/(bold|italic|regular|light|medium|black|thin)+$/i, '')
+    .replace(/[ _-]+/g, ' ').trim();
+  return (base || familyFromFilename(filename)).slice(0, 60);
 }
 
 /** Injects the project's uploaded font, if it has one. */
@@ -171,9 +249,22 @@ export function useCustomFont(typography) {
   useEffect(() => injectFontFace(customFontName, customFontUrl, fontFormat) || undefined, [customFontName, customFontUrl, fontFormat]);
 }
 
-/** Everything a page needs to show its fonts: stylesheet links plus the uploaded font. Returns link statuses. */
-export function useTypographyAssets(typography) {
+/** Injects the library fonts a page actually uses. `fonts` is the whole library; unused families are skipped. */
+export function useFontFaces(fonts, blocks, typography) {
+  const used = collectUsedFamilies(blocks, typography);
+  const faces = (fonts || []).filter((f) => used.has(f.family.toLowerCase()));
+  const key = faces.map((f) => `${f.family}|${f.fileUrl}|${f.weight}|${f.style}`).sort().join('\n');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => injectFontFaces(faces), [key]);
+}
+
+/**
+ * Everything a page needs to show its fonts: stylesheet links, the (legacy) single uploaded font, and the library
+ * fonts that its blocks use. Returns the link statuses.
+ */
+export function useTypographyAssets(typography, { fonts = [], blocks = [] } = {}) {
   const statuses = useFontLinks(parseFontUrls(typography?.fontUrl));
   useCustomFont(typography);
+  useFontFaces(fonts, blocks, typography);
   return statuses;
 }

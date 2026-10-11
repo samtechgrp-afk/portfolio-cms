@@ -61,10 +61,16 @@ export function makeShowcaseProject() {
     imagebox: { imageUrl: IMG[1] },
     video: { url: view('1zGK4XpH1yInGNIGGfhG17CqDa7Br1A96') },
     soundcloud: { url: 'https://soundcloud.com/forss/flickermood' },
+    hero: { bgType: 'image', bgUrl: IMG[0] },
+    'hero-carousel': {
+      items: IMG.map((url, i) => ({ title: ['Crusade campaign', 'Merch drop', 'Tee range'][i], year: ['2026', '2026', '2025'][i], category: ['Event campaign', 'Brand', 'Merch'][i], backdropUrl: url, posterUrl: url, linkType: 'anchor', url: '', projectSlug: '', anchor: 'showcase-top' })),
+    },
+    text: { content: 'Inline styling: ==highlighted==, ++underlined++, ~~struck~~ and [blue text]{#0057ff}.\n\n```js\nconst greeting = \"hello\"; // highlighted code\n```' },
   };
   const blocks = ALL_WIDGETS.map((w) => createBlock(w.type, over[w.type] || {}));
   const get = (t) => blocks.find((b) => b.type === t);
   Object.assign(get('container').props, { background: 'soft', slots: { children: [createBlock('heading', { text: 'Inside a container', level: 'h3' }), createBlock('text', { content: 'Layout blocks can hold other blocks.' })] } });
+  get('grid').props.layout = 'asym-1-2';
   get('grid').props.slots.col1 = [createBlock('iconbox')];
   get('grid').props.slots.col2 = [createBlock('imagebox', { imageUrl: IMG[2] })];
   get('sidebar').props.slots.side = [createBlock('iconlist')];

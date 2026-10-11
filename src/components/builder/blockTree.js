@@ -86,3 +86,44 @@ export function countNested(block) {
 export function countBlocks(blocks) {
   return blocks.reduce((n, b) => n + 1 + countNested(b), 0);
 }
+
+/** Shows or hides a block. Hidden blocks stay in the data but are not rendered on the site. */
+export const toggleHidden = (blocks, id) =>
+  updateList(blocks, id, (list, i) => list.map((b, k) => (k === i ? { ...b, hidden: !b.hidden } : b)));
+
+/** Where a block lives: { parentId, slot, index } (parentId and slot are null at the page root). */
+export function locate(blocks, id, parentId = null, slot = null) {
+  const index = blocks.findIndex((b) => b.id === id);
+  if (index !== -1) return { parentId, slot, index };
+  for (const b of blocks) {
+    for (const [name, list] of Object.entries(slotsOf(b) || {})) {
+      const hit = locate(list, id, b.id, name);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+/** Inserts a block at an exact position in the page root (target null) or in a container slot ({ parentId, slot }). */
+export function insertAt(blocks, target, block, index) {
+  if (!target) return [...blocks.slice(0, index), block, ...blocks.slice(index)];
+  return updateList(blocks, target.parentId, (list, i) =>
+    list.map((b, k) => {
+      if (k !== i) return b;
+      const current = b.props.slots?.[target.slot] || [];
+      return { ...b, props: { ...b.props, slots: { ...(b.props.slots || {}), [target.slot]: [...current.slice(0, index), block, ...current.slice(index)] } } };
+    })
+  );
+}
+
+/** Drag and drop: moves a block to `index` of another list (or the same list). Cannot drop a block into itself. */
+export function moveTo(blocks, id, target, index) {
+  const block = findBlock(blocks, id);
+  const from = locate(blocks, id);
+  if (!block || !from) return blocks;
+  if (target && (target.parentId === id || findBlock([block], target.parentId))) return blocks;
+  const sameList = (target?.parentId ?? null) === from.parentId && (target?.slot ?? null) === from.slot;
+  const adjusted = sameList && from.index < index ? index - 1 : index;
+  if (sameList && adjusted === from.index) return blocks;
+  return insertAt(removeBlock(blocks, id), target, block, adjusted);
+}

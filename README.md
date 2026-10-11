@@ -51,20 +51,28 @@ src/
 ```
 
 - `fontUrl` holds one stylesheet link per line (up to 6).
-- `customFontName`, `customFontUrl` and `fontFormat` (`truetype`, `opentype`, `woff` or `woff2`) describe one uploaded font file.
+- `customFontName`, `customFontUrl` and `fontFormat` are from the older single-font feature and still work. New fonts live in the font library table. Blocks refer to library fonts by family name (`props.font`), and any block can carry `hidden: true`.
 - Layout blocks (Container, Grid, Sidebar) keep nested blocks in `props.slots`, e.g. `props.slots.col1 = [ ...blocks ]`.
 - Projects saved by the first version are migrated automatically: `coverImageUrl` becomes `coverUrl`, and a Markdown `body` becomes a Text Editor block.
 
-## The 32 widgets
+## The 35 widgets
 
-- **Layout & Structure (7):** Container, Grid, Divider, Spacer, Menu Anchor, Sidebar, Link in Bio
-- **Basic Content (6):** Heading, Text Editor, Button, Icon, Text Path, Read More
-- **Media & Embeds (6):** Image, Video (embed URL or HTML code), Basic Gallery, Image Carousel (slider / carousel / slideshow), SoundCloud, Google Maps
+- **Layout & Structure (7):** Container, Grid (1, 2, 3 or 4 columns, six asymmetric presets or custom widths, gap, vertical and text alignment), Divider, Spacer, Menu Anchor, Sidebar, Link in Bio
+- **Basic Content (6):** Heading, Text Editor (Markdown, inline styling, code fences with syntax highlighting, size, line spacing, colour, font), Button (links to an external URL, a project page `/work/:slug`, a project's live site, or an anchor), Icon, Text Path, Read More
+- **Media & Embeds (8):** Image, Video, Basic Gallery (lightbox and captions), Image Carousel, **Hero Carousel**, SoundCloud, Google Maps, **Hero Banner** (headline, subdeck, image or video background, buttons, font bindings)
 - **Composite Cards (4):** Image Box, Icon Box, Icon List, Testimonial
 - **Interactive & UI (7):** Star Rating, Counter, Tabs, Accordion, Social Icons, Progress Bar, Alert
-- **Custom Code (2):** Shortcode, HTML
+- **Custom Code (3):** Shortcode, HTML, **Code Snippet** (highlighted JS, TS, JSON, CSS, HTML, Python, Bash, SQL)
 
-To add a widget: create a definition (`type`, `label`, `category`, `defaults`, `fields`, `Render`) in `widgets/` and add it to the array there. The registry, picker and inspector pick it up automatically.
+**Hero Carousel** (`hero-carousel`) is a dark 12px-rounded banner with top and bottom gradient shading and a floating glass bar (`backdrop-filter: blur(16px)`, `rgba(255,255,255,0.12)`) of poster thumbnails showing title, year and category. Clicking a thumbnail cross-fades the `.banner-bg` background over 0.6s ease, marks the thumbnail active and shows an animated play icon; the arrow keys move between items, and the active item's link becomes the button. Add, remove, reorder and edit items (title, year, category, backdrop, poster, target link) in the properties panel. Code: `widgets/HeroCarouselBlock.jsx` and `.css`.
+
+## Editing blocks
+
+- Drag the grip (top left of a block) to reorder, including into and out of containers, or use the up and down buttons. A blue line shows where the block will land. Undo (or Ctrl+Z) reverses it.
+- The eye button hides a block. It stays in the page data but is not shown on the site; the canvas dims it and labels it Hidden.
+- Duplicate, delete and the property panel work as before. The Preview tab shows the page as visitors see it, at desktop, tablet or mobile width.
+
+To add a widget: create a definition (`type`, `label`, `category`, `defaults`, `fields`, `Render`) in `widgets/` and add it to the array there. Field types include `font` (library picker) and `link` (project, live site, anchor or URL).
 
 ## Testing
 
@@ -83,17 +91,19 @@ import { PageRenderer } from './components/builder';
 
 Click **Edit home page** on the dashboard. It opens (or creates) the project with the slug `home`. When it is **published** and has at least one block, the portfolio site shows it at `/` instead of the default layout. The slug is locked, `home` never appears in the Projects cards, and `/work/home` redirects to `/`. If it is a draft, empty, or Supabase is unreachable, the site shows its default layout.
 
-## Custom fonts
+## Font library
 
-**Typography, Upload your own font** accepts .ttf, .otf, .woff and .woff2 (5 MB maximum). The file's type is checked by its first bytes, not just its name. It is stored in the public Supabase Storage bucket `fonts` under a random name, and the project keeps `{ customFontName, customFontUrl, fontFormat }`. `injectFontFace(name, url, format)` in `src/components/typography.js` adds the `@font-face` rule, and `PageRenderer` calls it, so visitors see the font. Use the name in the heading or body fields (the Use for headings and Use for body buttons do this).
+**Font library** (dashboard button, and inside each page's Typography tab) holds every font you upload. Add several .ttf, .otf, .woff or .woff2 files at once; each gets a family name, a weight (100 to 900) and a style (normal or italic), pre-filled from the file name. Files with the same family name form one family (for example Brand Sans 400, 700 and 700 italic). Each file's first bytes are checked, so a renamed non-font file is rejected, and the bucket only accepts font types up to 5 MB.
 
-- One uploaded font per project. Replacing or removing it deletes the old file after you save, and deleting a project deletes its font. A file you upload and then abandon without saving is left in the bucket; delete it in the Supabase dashboard under Storage.
-- Only upload fonts you have a licence to use on the web.
-- Uploads need the Supabase connection. In LocalStorage mode the upload section is disabled.
+- **Where it is stored:** files in the public Supabase Storage bucket `fonts` (random names), and one row per file in the table `public.fonts`: `family`, `file_url`, `storage_path`, `format`, `weight`, `style`.
+- **Use it:** the Use for headings and Use for body buttons set the page's default fonts. Many blocks (Heading, Text Editor, Button, Tabs, Testimonial and others) have a **Font** picker for a single block, the Hero Banner has separate headline and subdeck fonts, and in a Text Editor `[word]{font:Brand Sans}` styles a few words.
+- **Loading:** `injectFontFace(fontName, fontUrl, format, { weight, style })` adds the `@font-face` rule and a preload link. `PageRenderer` injects only the fonts a page actually uses, so unused fonts cost nothing. Rules are shared and reference-counted, so switching between dark and light mode never reloads or flickers a font.
+- **Deleting** a font asks for confirmation, shows how many pages use it, and removes the row and the file. Pages that used it fall back to their default fonts.
+- Uploads need the Supabase connection. Pages saved with the older single-font feature keep working (their fonts were moved into the library automatically).
 
 ## Shared code
 
-The page renderer (`PageRenderer.jsx`, `WidgetRegistry.jsx`, `widgets/`, `typography.js`, `page.css`, `markdown.js`) is also used by the portfolio site repo. After changing any of these, run `npm run sync -- ../portfolio-cms` inside the site repo to copy them across.
+The page renderer is also used by the portfolio site repo. Shared files: `components/typography.js`, `components/builder/` (`PageRenderer.jsx`, `WidgetRegistry.jsx`, `blockTree.js`, `icons.jsx`, `page.css`, and the whole `widgets/` folder including `HeroCarouselBlock.jsx` and `.css`), and `cms/lib/markdown.js` and `cms/lib/highlight.js`. Editor-only files (`BlockCanvas`, `BlockPickerModal`, `PropertyInspector`, `BuilderContext`, `FontManager`) are not shared. After changing any of these, run `npm run sync -- ../portfolio-cms` inside the site repo to copy them across.
 
 ## Supabase (connected)
 

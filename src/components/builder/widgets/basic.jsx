@@ -1,6 +1,6 @@
 import { createElement, useId, useState } from 'react';
 import { Icon, CONTENT_ICONS } from '../icons.jsx';
-import { ALIGN, LinkWrap, Md, num, opts } from './shared.jsx';
+import { ALIGN, LINK_FIELD, LinkWrap, Md, isExternalHref, num, opts, resolveLink } from './shared.jsx';
 
 const LEVELS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
 const iconOptions = CONTENT_ICONS.map((n) => [n, n.replace('-', ' ')]);
@@ -67,40 +67,55 @@ export const basicWidgets = [
   },
   {
     type: 'text', label: 'Text Editor', category: 'basic', icon: 'align-left',
-    description: 'Paragraphs, lists and links written in Markdown.',
-    defaults: { content: 'Write your text here. You can use **bold**, *italic*, [links](https://example.com) and lists:\n\n- First point\n- Second point', align: 'left', columns: '1' },
+    description: 'Paragraphs, lists, links and inline styling written in Markdown.',
+    defaults: {
+      content: 'Write your text here. You can use **bold**, *italic*, [links](https://example.com) and lists:\n\n- First point\n- Second point',
+      align: 'left', columns: '1', size: '', lineHeight: '', color: '',
+    },
     fields: [
-      { key: 'content', label: 'Content (Markdown)', type: 'textarea', rows: 10, mono: true },
+      {
+        key: 'content', label: 'Content (Markdown)', type: 'textarea', rows: 10, mono: true,
+        help: 'Inline styling: ==highlight== ++underline++ ~~strike~~ [coloured]{#0057ff} [own font]{font:Brand Sans}. Code: wrap in ```js fences.',
+      },
       ALIGN,
       { key: 'columns', label: 'Columns', type: 'select', options: opts('1', '2', '3') },
+      { key: 'size', label: 'Text size', type: 'select', options: [['', 'Default'], ['14', 'Small (14px)'], ['17', 'Normal (17px)'], ['20', 'Large (20px)'], ['24', 'Extra large (24px)'], ['32', 'Display (32px)']] },
+      { key: 'lineHeight', label: 'Line spacing', type: 'select', options: [['', 'Default'], ['1.3', 'Tight'], ['1.6', 'Comfortable'], ['1.9', 'Airy']] },
+      { key: 'color', label: 'Text colour', type: 'select', options: [['', 'Default'], ['accent', 'Accent'], ['muted', 'Muted']] },
     ],
     Render: ({ props }) => (
-      <div className="pb-text" style={{ textAlign: props.align, columnCount: num(props.columns, 1) }}>
+      <div
+        className={`pb-text ${props.color ? `c-${props.color}` : ''}`}
+        style={{ textAlign: props.align, columnCount: num(props.columns, 1), fontSize: props.size ? `${props.size}px` : undefined, lineHeight: props.lineHeight || undefined }}
+      >
         <Md source={props.content} />
       </div>
     ),
   },
   {
     type: 'button', label: 'Button', category: 'basic', icon: 'pointer',
-    description: 'A call-to-action link styled as a button.',
-    defaults: { text: 'Get in touch', url: '#', style: 'fill', size: 'md', align: 'left', newTab: false, icon: 'none' },
+    description: 'A call-to-action: link to a project page, an external site, a live project or an anchor.',
+    defaults: { text: 'Get in touch', linkType: 'url', url: '#', projectSlug: '', anchor: '', style: 'fill', size: 'md', align: 'left', newTab: false, icon: 'none' },
     fields: [
       { key: 'text', label: 'Label', type: 'text' },
-      { key: 'url', label: 'Link', type: 'url', help: 'Use #anchor-id to jump to a Menu Anchor.' },
+      LINK_FIELD,
       { key: 'style', label: 'Style', type: 'select', options: opts('fill', 'outline', 'text') },
       { key: 'size', label: 'Size', type: 'select', options: opts('sm', 'md', 'lg') },
       ALIGN,
       { key: 'icon', label: 'Icon', type: 'select', options: [['none', 'None'], ...iconOptions] },
       { key: 'newTab', label: 'Open in a new tab', type: 'toggle' },
     ],
-    Render: ({ props }) => (
-      <div style={{ textAlign: props.align }}>
-        <LinkWrap href={props.url} newTab={props.newTab} className={`pb-btn is-${props.style} is-${props.size}`}>
-          {props.text}
-          {props.icon !== 'none' && <Icon name={props.icon} size={18} />}
-        </LinkWrap>
-      </div>
-    ),
+    Render: ({ props }) => {
+      const href = resolveLink(props);
+      return (
+        <div style={{ textAlign: props.align }}>
+          <LinkWrap href={href} newTab={props.newTab || isExternalHref(href) && props.linkType === 'live'} className={`pb-btn is-${props.style} is-${props.size}`}>
+            {props.text}
+            {props.icon !== 'none' && <Icon name={props.icon} size={18} />}
+          </LinkWrap>
+        </div>
+      );
+    },
   },
   {
     type: 'icon', label: 'Icon', category: 'basic', icon: 'star',

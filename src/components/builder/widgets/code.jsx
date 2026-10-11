@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react';
+import { LANGUAGES, highlight } from '../../../cms/lib/highlight.js';
 import { LinkWrap, Placeholder, SandboxFrame, num } from './shared.jsx';
 
 const SHORTCODES = {
@@ -29,6 +31,27 @@ function renderShortcodes(text, ctx) {
   return out;
 }
 
+function CodeSnippet({ props, editing }) {
+  const code = props.code || '';
+  const html = useMemo(() => highlight(code, props.language), [code, props.language]);
+  const [copied, setCopied] = useState(false);
+  const copy = () => navigator.clipboard?.writeText(code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1600); });
+  if (!code.trim()) return <Placeholder icon="code">Paste your code in the properties panel.</Placeholder>;
+  const lines = code.split('\n').length;
+  return (
+    <figure className="pb-codeblock">
+      <figcaption>
+        <span>{props.filename || props.language}</span>
+        {props.copyButton && <button type="button" onClick={copy} tabIndex={editing ? -1 : 0}>{copied ? 'Copied' : 'Copy'}</button>}
+      </figcaption>
+      <div className="pb-codeblock__body">
+        {props.lineNumbers && <pre className="pb-codeblock__gutter" aria-hidden="true">{Array.from({ length: lines }, (_, i) => i + 1).join('\n')}</pre>}
+        <pre className="pb-code" tabIndex={0}><code className={`lang-${props.language}`} dangerouslySetInnerHTML={{ __html: html }} /></pre>
+      </div>
+    </figure>
+  );
+}
+
 export const codeWidgets = [
   {
     type: 'shortcode', label: 'Shortcode', category: 'code', icon: 'terminal',
@@ -55,5 +78,18 @@ export const codeWidgets = [
     Render: ({ props }) => (props.code?.trim()
       ? <SandboxFrame code={props.code} height={num(props.height, 160)} title="Custom HTML" />
       : <Placeholder icon="code">Paste your HTML in the properties panel.</Placeholder>),
+  },
+  {
+    type: 'codesnippet', label: 'Code Snippet', category: 'code', icon: 'code',
+    description: 'A syntax-highlighted code listing with a file name and copy button.',
+    defaults: { filename: 'example.js', language: 'js', lineNumbers: true, copyButton: true, code: "// Fade a block in when it scrolls into view\nconst io = new IntersectionObserver((entries) => {\n  entries.forEach((e) => e.isIntersecting && e.target.classList.add('is-visible'));\n});\ndocument.querySelectorAll('.reveal').forEach((el) => io.observe(el));" },
+    fields: [
+      { key: 'filename', label: 'File name (optional)', type: 'text' },
+      { key: 'language', label: 'Language', type: 'select', options: LANGUAGES.map((l) => [l, l]) },
+      { key: 'code', label: 'Code', type: 'textarea', rows: 12, mono: true },
+      { key: 'lineNumbers', label: 'Show line numbers', type: 'toggle' },
+      { key: 'copyButton', label: 'Show a copy button', type: 'toggle' },
+    ],
+    Render: CodeSnippet,
   },
 ];

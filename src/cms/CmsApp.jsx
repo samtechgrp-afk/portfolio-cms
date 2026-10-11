@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ToastProvider, useToast } from './components/Toast.jsx';
 import ProjectList from './components/ProjectList.jsx';
 import ProjectEditor from './components/ProjectEditor.jsx';
+import { FontLibraryPage } from '../components/FontManager.jsx';
+import { collectUsedFamilies } from '../components/typography.js';
 import Login from './components/Login.jsx';
 import { localStorageStore } from './lib/projectsStore.js';
 import { makeShowcaseProject } from './lib/seed.js';
@@ -16,6 +18,27 @@ function CmsShell({ store, user, onSignOut }) {
   const [view, setView] = useState({ name: 'list' }); // { name: 'list' } | { name: 'edit', project?: Project }
   const [saving, setSaving] = useState(false);
   const [importable, setImportable] = useState([]);
+  const [fonts, setFonts] = useState([]);
+
+  useEffect(() => {
+    store.listFonts?.().then(setFonts).catch((e) => toast.error(msg(e, "Couldn't load the font library.")));
+  }, [store, toast]);
+
+  // The font library, shared by every page. Uploads need the Supabase store.
+  const library = useMemo(() => {
+    const byName = (a, b) => a.family.localeCompare(b.family) || a.weight - b.weight || a.style.localeCompare(b.style);
+    return {
+      enabled: !!store.addFont,
+      fonts,
+      add: async (meta) => { const font = await store.addFont(meta); setFonts((all) => [...all, font].sort(byName)); return font; },
+      remove: async (font) => { await store.deleteFont(font); setFonts((all) => all.filter((f) => f.id !== font.id)); },
+    };
+  }, [store, fonts]);
+
+  const usageOf = useCallback(
+    (family) => (projects || []).filter((p) => collectUsedFamilies(p.blocks, p.typography).has(family.toLowerCase())).length,
+    [projects]
+  );
 
   useEffect(() => {
     store.list().then(setProjects).catch((e) => { setProjects([]); toast.error(msg(e, "Couldn't load your projects.")); });
@@ -34,7 +57,8 @@ function CmsShell({ store, user, onSignOut }) {
       const saved = await store.save(data);
       // The old font file is only deleted once the project no longer points at it.
       const oldFont = previous?.typography?.customFontUrl;
-      if (oldFont && oldFont !== saved.typography?.customFontUrl) store.removeFont?.(oldFont).catch(() => {});
+      // Never delete a file the font library still points at.
+      if (oldFont && oldFont !== saved.typography?.customFontUrl && !fonts.some((f) => f.fileUrl === oldFont)) store.removeFont?.(oldFont).catch(() => {});
       setProjects((all) => (all.some((p) => p.id === saved.id) ? all.map((p) => (p.id === saved.id ? saved : p)) : [saved, ...all]));
       toast.success(`"${saved.title}" saved.`);
       setView({ name: 'list' });
@@ -43,18 +67,18 @@ function CmsShell({ store, user, onSignOut }) {
     } finally {
       setSaving(false);
     }
-  }, [projects, store, toast]);
+  }, [projects, fonts, store, toast]);
 
   const remove = useCallback(async (project) => {
     try {
       await store.remove(project.id);
-      if (project.typography?.customFontUrl) store.removeFont?.(project.typography.customFontUrl).catch(() => {});
+      if (project.typography?.customFontUrl && !fonts.some((f) => f.fileUrl === project.typography.customFontUrl)) store.removeFont?.(project.typography.customFontUrl).catch(() => {});
       setProjects((all) => all.filter((p) => p.id !== project.id));
       toast.success(`"${project.title}" deleted.`);
     } catch (e) {
       toast.error(msg(e, "Couldn't delete the project. Try again."));
     }
-  }, [store, toast]);
+  }, [fonts, store, toast]);
 
   const toggleStatus = useCallback(async (project) => {
     const next = project.status === 'published' ? 'draft' : 'published';
@@ -138,6 +162,7 @@ function CmsShell({ store, user, onSignOut }) {
             projects={projects}
             onCreate={() => setView({ name: 'edit' })}
             onEdit={(project) => setView({ name: 'edit', project })}
+            onOpenFonts={() => setView({ name: 'fonts' })}
             onEditHome={() => {
               const home = projects.find((p) => p.slug === 'home');
               setView(home ? { name: 'edit', project: home } : { name: 'edit', template: { title: 'Home', slug: 'home', summary: 'The home page of my portfolio.' } });
@@ -147,12 +172,15 @@ function CmsShell({ store, user, onSignOut }) {
             onExport={exportPublished}
             onAddShowcase={addShowcase}
           />
+        ) : view.name === 'fonts' ? (
+          <FontLibraryPage library={library} usageOf={usageOf} onBack={() => setView({ name: 'list' })} />
         ) : (
           <ProjectEditor
             key={view.project?.id ?? view.template?.slug ?? 'new'}
             project={view.project}
             template={view.template}
-            uploadFont={store.uploadFont}
+            library={library}
+            usageOf={usageOf}
             projects={projects}
             saving={saving}
             onSave={save}

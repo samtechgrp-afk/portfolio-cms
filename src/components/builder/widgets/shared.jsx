@@ -13,10 +13,41 @@ export const safeHref = (u) => {
   return /^(https?:|mailto:|tel:|#|\/)/i.test(t) ? t : undefined;
 };
 
+/** Safe CSS url() for a background image: only plain http(s) links pass. */
+export const cssUrl = (u) => {
+  try {
+    const x = new URL((u || '').trim());
+    if (!/^https?:$/.test(x.protocol) || /["'()\\;{}<>\s]/.test(x.href)) return undefined;
+    return `url("${x.href}")`;
+  } catch {
+    return undefined;
+  }
+};
+
 export const safeId = (s) => (s || '').replace(/[^a-zA-Z0-9_-]/g, '-');
 
 /** opts('a', ['b', 'Label B']) -> [['a','A'], ['b','Label B']] */
 export const opts = (...items) => items.map((p) => (Array.isArray(p) ? p : [p, p[0].toUpperCase() + p.slice(1)]));
+
+export const LINK_TYPES = [['url', 'External link'], ['project', 'Project page (/work/...)'], ['live', "Project's live site"], ['anchor', 'Anchor on this page']];
+
+/**
+ * Turns link settings ({ linkType, url, projectSlug, anchor }) into an href.
+ * 'project' -> /work/:slug, 'live' -> the live URL saved when the project was picked, 'anchor' -> #id, default -> url.
+ */
+export function resolveLink(o = {}) {
+  switch (o.linkType) {
+    case 'project': return o.projectSlug ? `/work/${encodeURIComponent(o.projectSlug)}` : undefined;
+    case 'live': return /^https?:\/\//i.test(o.url || '') ? o.url : undefined;
+    case 'anchor': return o.anchor ? `#${safeId(o.anchor)}` : undefined;
+    default: return o.url;
+  }
+}
+export const isExternalHref = (h) => /^https?:\/\//i.test(h || '');
+
+/** Field types handled by the Property Inspector: 'link' (edits several keys at once) and 'font' (library picker). */
+export const LINK_FIELD = { key: 'url', label: 'Link', type: 'link' };
+export const FONT_FIELD = { key: 'font', label: 'Font', type: 'font', help: 'Pick an uploaded font for this block, or keep the page fonts.' };
 
 export const ALIGN = { key: 'align', label: 'Alignment', type: 'select', options: opts('left', 'center', 'right') };
 

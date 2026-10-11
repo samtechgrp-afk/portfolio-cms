@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../icons.jsx';
 import { ALIGN, LinkWrap, Placeholder, SandboxFrame, num, opts } from './shared.jsx';
 
@@ -51,6 +51,65 @@ function Tile({ item, ratio }) {
   return item.url
     ? <img src={item.url} alt={item.alt || ''} loading="lazy" referrerPolicy="no-referrer" style={ratio !== 'auto' ? { aspectRatio: ratio } : undefined} />
     : <div className="pb-tile-empty" style={{ aspectRatio: ratio === 'auto' ? '4/3' : ratio }}><Icon name="image" size={22} /></div>;
+}
+
+
+function Gallery({ props }) {
+  const items = props.images || [];
+  const shown = items.map((it, i) => ({ ...it, i })).filter((it) => it.url); // images that can be opened
+  const [open, setOpen] = useState(null); // index into `shown`
+  const dialog = useRef(null);
+
+  useEffect(() => {
+    const d = dialog.current;
+    if (!d) return;
+    if (open !== null && !d.open) d.showModal();
+    if (open === null && d.open) d.close();
+  }, [open]);
+
+  const step = (dir) => setOpen((o) => (o + dir + shown.length) % shown.length);
+  const current = open !== null ? shown[open] : null;
+
+  return (
+    <>
+      <div className={`pb-gallery pb-gap-${props.gap}`} style={{ '--cols': num(props.columns, 3) }}>
+        {items.map((it, i) => {
+          const pos = shown.findIndex((x) => x.i === i);
+          return (
+            <figure className="pb-gallery__item" key={i}>
+              {props.lightbox && it.url ? (
+                <button type="button" className="pb-gallery__open" onClick={() => setOpen(pos)} aria-label={`View ${it.caption || it.alt || `image ${i + 1}`} larger`}>
+                  <Tile item={it} ratio={props.ratio} />
+                </button>
+              ) : <Tile item={it} ratio={props.ratio} />}
+              {props.showCaptions && it.caption && <figcaption>{it.caption}</figcaption>}
+            </figure>
+          );
+        })}
+      </div>
+      {props.lightbox && (
+        <dialog
+          ref={dialog} className="pb-lightbox" aria-label="Image viewer" onClose={() => setOpen(null)}
+          onClick={(e) => { if (e.target === dialog.current) setOpen(null); }}
+          onKeyDown={(e) => { if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1); }}
+        >
+          {current && (
+            <figure>
+              <img src={current.url} alt={current.alt || ''} referrerPolicy="no-referrer" />
+              {(current.caption || current.alt) && <figcaption>{current.caption || current.alt}</figcaption>}
+            </figure>
+          )}
+          <button type="button" className="pb-lightbox__x" aria-label="Close" onClick={() => setOpen(null)}><Icon name="x" size={22} /></button>
+          {shown.length > 1 && (
+            <>
+              <button type="button" className="pb-lightbox__nav is-prev" aria-label="Previous image" onClick={() => step(-1)}><Icon name="chevron-left" size={26} /></button>
+              <button type="button" className="pb-lightbox__nav is-next" aria-label="Next image" onClick={() => step(1)}><Icon name="chevron-right" size={26} /></button>
+            </>
+          )}
+        </dialog>
+      )}
+    </>
+  );
 }
 
 function Carousel({ props, editing }) {
@@ -162,19 +221,20 @@ export const mediaWidgets = [
   },
   {
     type: 'gallery', label: 'Basic Gallery', category: 'media', icon: 'grid',
-    description: 'A tidy grid of images.',
-    defaults: { images: [{ ...imageItem }, { ...imageItem }, { ...imageItem }], columns: '3', gap: 'md', ratio: '1/1' },
+    description: 'A grid of images that open in a lightbox, with optional captions.',
+    defaults: { images: [{ ...imageItem, caption: '' }, { ...imageItem, caption: '' }, { ...imageItem, caption: '' }], columns: '3', gap: 'md', ratio: '1/1', lightbox: true, showCaptions: false },
     fields: [
       { key: 'columns', label: 'Columns', type: 'select', options: opts('2', '3', '4', '5') },
       { key: 'gap', label: 'Gap', type: 'select', options: opts('sm', 'md', 'lg') },
       { key: 'ratio', label: 'Image shape', type: 'select', options: RATIOS },
-      { key: 'images', label: 'Images', type: 'list', max: 40, newItem: imageItem, itemLabel: (it, i) => it.alt || `Image ${i + 1}`, itemFields: imageFields },
+      { key: 'lightbox', label: 'Open images in a lightbox', type: 'toggle' },
+      { key: 'showCaptions', label: 'Show captions under images', type: 'toggle' },
+      {
+        key: 'images', label: 'Images', type: 'list', max: 40, newItem: { ...imageItem, caption: '' }, itemLabel: (it, i) => it.caption || it.alt || `Image ${i + 1}`,
+        itemFields: [...imageFields, { key: 'caption', label: 'Caption (optional)', type: 'text' }],
+      },
     ],
-    Render: ({ props }) => (
-      <div className={`pb-gallery pb-gap-${props.gap}`} style={{ '--cols': num(props.columns, 3) }}>
-        {(props.images || []).map((it, i) => <div key={i} className="pb-gallery__item"><Tile item={it} ratio={props.ratio} /></div>)}
-      </div>
-    ),
+    Render: Gallery,
   },
   {
     type: 'carousel', label: 'Image Carousel', category: 'media', icon: 'layers',

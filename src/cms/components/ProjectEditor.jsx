@@ -5,8 +5,9 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import FontManager from '../../components/FontManager.jsx';
 import {
   BlockCanvas, BlockPickerModal, PageRenderer, PropertyInspector, cloneBlock, countBlocks, createBlock,
-  findBlock, insertAfter, insertBlock, moveBlock, patchProps, removeBlock,
+  findBlock, insertAfter, insertBlock, moveBlock, moveTo, patchProps, removeBlock, toggleHidden,
 } from '../../components/builder/index.js';
+import { BuilderContext } from '../../components/builder/BuilderContext.jsx';
 import { Icon } from '../../components/builder/icons.jsx';
 import { DEFAULT_TYPOGRAPHY, parseFontUrls, useTypographyAssets } from '../../components/typography.js';
 import { slugify, validateProject } from '../lib/validation.js';
@@ -21,9 +22,9 @@ const DEVICES = [['desktop', 'Desktop', '100%'], ['tablet', 'Tablet', 768], ['mo
 const HOME_SLUG = 'home';
 
 /**
- * `template` pre-fills a new project (used for the Home page). `uploadFont(file) -> { url }` enables font uploads.
+ * `template` pre-fills a new project (used for the Home page). `library` is the shared font library.
  */
-export default function ProjectEditor({ project, projects, saving, onSave, onCancel, template, uploadFont }) {
+export default function ProjectEditor({ project, projects, saving, onSave, onCancel, template, library, usageOf }) {
   const isNew = !project;
   const initial = useRef(project ? { ...project } : { ...EMPTY, createdAt: today(), typography: { ...DEFAULT_TYPOGRAPHY }, blocks: [], ...template });
   const [values, setValues] = useState(initial.current);
@@ -41,7 +42,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
   const blocksRef = useRef(values.blocks);
   blocksRef.current = values.blocks;
 
-  useTypographyAssets(values.typography);
+  useTypographyAssets(values.typography, { fonts: library.fonts, blocks: values.blocks });
 
   const errors = useMemo(() => validateProject(values, projects), [values, projects]);
   const dirty = JSON.stringify(values) !== JSON.stringify(initial.current);
@@ -230,12 +231,13 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
 
         {tab === 'typography' && (
           <div role="tabpanel" id="panel-typography" aria-labelledby="tab-typography">
-            <FontManager value={values.typography} onChange={(t) => set('typography', t)} errors={errors} onUploadFont={uploadFont} />
+            <FontManager value={values.typography} onChange={(t) => set('typography', t)} errors={errors} library={library} usageOf={usageOf} />
           </div>
         )}
 
         {tab === 'builder' && (
           <div role="tabpanel" id="panel-builder" aria-labelledby="tab-builder">
+            <BuilderContext.Provider value={{ fonts: library.fonts, projects }}>
             <div className="bb-workspace">
               <div>
                 <div className="bb-toolbar">
@@ -247,21 +249,24 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
                 </div>
                 <div className="bb-canvaswrap">
                   <BlockCanvas
-                    blocks={values.blocks} typography={values.typography} title={values.title}
+                    blocks={values.blocks} typography={values.typography} title={values.title} fonts={library.fonts}
                     selectedId={selectedId} onSelect={setSelectedId}
                     onAdd={(target) => setPicker({ open: true, target })}
                     onMove={(id, dir) => commit(moveBlock(blocksRef.current, id, dir))}
                     onDuplicate={duplicate}
+                    onToggleHidden={(id) => commit(toggleHidden(blocksRef.current, id))}
+                    onDropBlock={(id, target, index) => commit(moveTo(blocksRef.current, id, target, index))}
                     onDelete={(id) => commit(removeBlock(blocksRef.current, id))}
                   />
                 </div>
               </div>
               <PropertyInspector
                 block={selected} onChange={patchSelected} onClose={() => setSelectedId(null)}
-                onDuplicate={() => duplicate(selectedId)} onDelete={() => commit(removeBlock(blocksRef.current, selectedId))}
+                onDuplicate={() => duplicate(selectedId)} onToggleHidden={() => commit(toggleHidden(blocksRef.current, selectedId))} onDelete={() => commit(removeBlock(blocksRef.current, selectedId))}
               />
             </div>
             <BlockPickerModal open={picker.open} onPick={addBlock} onClose={() => setPicker({ open: false, target: null })} />
+            </BuilderContext.Provider>
           </div>
         )}
 
@@ -274,7 +279,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
               <p className="cms-muted">This is how the page will look, with your fonts and live embeds.</p>
             </div>
             <div className="bb-previewframe" style={{ maxWidth: DEVICES.find(([id]) => id === device)[2] }}>
-              <PageRenderer blocks={values.blocks} typography={values.typography} title={values.title} />
+              <PageRenderer blocks={values.blocks} typography={values.typography} title={values.title} fonts={library.fonts} />
             </div>
           </div>
         )}

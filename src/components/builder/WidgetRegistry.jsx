@@ -4,6 +4,10 @@ import { mediaWidgets } from './widgets/media.jsx';
 import { cardWidgets } from './widgets/cards.jsx';
 import { interactiveWidgets } from './widgets/interactive.jsx';
 import { codeWidgets } from './widgets/code.jsx';
+import { heroWidgets } from './widgets/hero.jsx';
+import { heroCarouselWidget } from './widgets/HeroCarouselBlock.jsx';
+import { FONT_FIELD } from './widgets/shared.jsx';
+import { fontScopeStyle } from '../typography.js';
 import { newBlockId } from './blockTree.js';
 
 /**
@@ -23,12 +27,23 @@ export const CATEGORIES = [
   { id: 'code', label: 'Custom Code' },
 ];
 
-export const ALL_WIDGETS = [...layoutWidgets, ...basicWidgets, ...mediaWidgets, ...cardWidgets, ...interactiveWidgets, ...codeWidgets];
+// Widgets that get a "Font" picker (one font from the library for the whole block).
+const FONT_TYPES = new Set(['heading', 'text', 'button', 'readmore', 'testimonial', 'counter', 'tabs', 'accordion', 'imagebox', 'iconbox', 'iconlist', 'alert', 'rating', 'progress']);
+const withFont = (w) => (FONT_TYPES.has(w.type) ? { ...w, defaults: { ...w.defaults, font: '' }, fields: [...w.fields, FONT_FIELD] } : w);
+
+export const ALL_WIDGETS = [
+  ...layoutWidgets, ...basicWidgets, ...mediaWidgets, heroCarouselWidget, ...heroWidgets, ...cardWidgets, ...interactiveWidgets, ...codeWidgets,
+].map(withFont);
 export const WIDGETS = Object.fromEntries(ALL_WIDGETS.map((w) => [w.type, w]));
 
 export const getWidget = (type) => WIDGETS[type];
 export const widgetsByCategory = () => CATEGORIES.map((c) => ({ ...c, widgets: ALL_WIDGETS.filter((w) => w.category === c.id) }));
-export const getSlots = (block) => WIDGETS[block.type]?.slots?.({ ...WIDGETS[block.type].defaults, ...block.props }) ?? [];
+/** Defaults + saved props, upgraded by the widget's own `normalize` when it has one (older saved blocks keep working). */
+export const resolveProps = (w, props) => {
+  const merged = { ...w.defaults, ...props };
+  return w.normalize ? w.normalize(merged) : merged;
+};
+export const getSlots = (block) => (WIDGETS[block.type] ? WIDGETS[block.type].slots?.(resolveProps(WIDGETS[block.type], block.props)) ?? [] : []);
 
 /** Creates a new block: { id, type, props }. Props are a deep copy of the widget defaults. */
 export function createBlock(type, overrides = {}) {
@@ -42,5 +57,9 @@ export function BlockView({ block, slot, editing = false, ctx }) {
   const w = WIDGETS[block.type];
   if (!w) return <div className="pb-unknown">Unknown block type "{block.type}". It is kept in your data but cannot be shown.</div>;
   const Render = w.Render;
-  return <Render props={{ ...w.defaults, ...block.props }} slot={slot || (() => null)} editing={editing} ctx={ctx} />;
+  const props = resolveProps(w, block.props);
+  const node = <Render props={props} slot={slot || (() => null)} editing={editing} ctx={ctx} />;
+  // A block-level font choice applies to everything inside the block.
+  const scope = fontScopeStyle(props.font);
+  return scope ? <div className="pb-font" style={scope}>{node}</div> : node;
 }

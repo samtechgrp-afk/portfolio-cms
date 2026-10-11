@@ -9,7 +9,7 @@ const SORTERS = {
   title: (a, b) => a.title.localeCompare(b.title),
 };
 
-export default function ProjectList({ projects, onCreate, onEdit, onEditHome, onDelete, onToggleStatus, onExport, onAddShowcase }) {
+export default function ProjectList({ projects, onCreate, onEdit, onEditHome, onOpenFonts, onDelete, onToggleStatus, onExport, onAddShowcase }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [category, setCategory] = useState('all');
@@ -42,6 +42,7 @@ export default function ProjectList({ projects, onCreate, onEdit, onEditHome, on
         </div>
         <div className="cms-pagehead__actions">
           <button type="button" className="cms-btn" onClick={onEditHome}>Edit home page</button>
+          <button type="button" className="cms-btn" onClick={onOpenFonts}>Font library</button>
           <button type="button" className="cms-btn" onClick={onAddShowcase}>Add test page (all blocks)</button>
           <button type="button" className="cms-btn" onClick={onExport} disabled={!published}>Export published (JSON)</button>
           <button type="button" className="cms-btn cms-btn--primary" onClick={onCreate}>New project</button>

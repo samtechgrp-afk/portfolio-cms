@@ -3,6 +3,28 @@ import { ALIGN, LinkWrap, num, opts, safeId } from './shared.jsx';
 
 const MAXW = { narrow: 640, normal: 960, wide: 1200, full: null };
 
+const GRID_PRESETS = {
+  1: ['1fr'], 2: ['1fr', '1fr'], 3: ['1fr', '1fr', '1fr'], 4: ['1fr', '1fr', '1fr', '1fr'],
+  'asym-1-2': ['1fr', '2fr'], 'asym-2-1': ['2fr', '1fr'], 'asym-1-3': ['1fr', '3fr'], 'asym-3-1': ['3fr', '1fr'],
+  'asym-1-2-1': ['1fr', '2fr', '1fr'], 'asym-2-1-1': ['2fr', '1fr', '1fr'],
+};
+const GRID_LAYOUT_OPTIONS = [
+  ['1', '1 column'], ['2', '2 columns'], ['3', '3 columns'], ['4', '4 columns'],
+  ['asym-1-2', 'Asymmetric: 1/3 + 2/3'], ['asym-2-1', 'Asymmetric: 2/3 + 1/3'], ['asym-1-3', 'Asymmetric: 1/4 + 3/4'],
+  ['asym-3-1', 'Asymmetric: 3/4 + 1/4'], ['asym-1-2-1', 'Asymmetric: 1/4 + 1/2 + 1/4'], ['asym-2-1-1', 'Asymmetric: 1/2 + 1/4 + 1/4'],
+  ['custom', 'Custom widths'],
+];
+const TRACK = /^\d+(?:\.\d+)?(?:fr|%|px)$/;
+
+/** Column tracks for a grid: a preset, or the custom widths (falls back to two equal columns if they are invalid). */
+export function gridTracks(p) {
+  if (p.layout === 'custom') {
+    const tokens = (p.widths || '').trim().split(/\s+/).filter(Boolean).slice(0, 4);
+    return tokens.length && tokens.every((t) => TRACK.test(t)) ? tokens : GRID_PRESETS[2];
+  }
+  return GRID_PRESETS[p.layout] || GRID_PRESETS[2];
+}
+
 export const layoutWidgets = [
   {
     type: 'container', label: 'Container', category: 'layout', icon: 'box',
@@ -26,21 +48,33 @@ export const layoutWidgets = [
   },
   {
     type: 'grid', label: 'Grid', category: 'layout', icon: 'grid',
-    description: 'Two to four columns, each holding its own blocks.',
-    defaults: { columns: '2', gap: 'md', stack: true, slots: { col1: [], col2: [], col3: [], col4: [] } },
-    slots: (p) => Array.from({ length: num(p.columns, 2) }, (_, i) => ({ name: `col${i + 1}`, label: `Column ${i + 1}` })),
+    description: 'One to four columns, equal or asymmetric, each holding its own blocks.',
+    defaults: { columns: '2', gap: 'md', stack: true, align: 'stretch', textAlign: '', slots: { col1: [], col2: [], col3: [], col4: [] } },
+    // Older grids only had `columns` and `gap`; map them to the newer `layout` and `gapSize`.
+    normalize: (p) => ({ ...p, layout: p.layout ?? String(p.columns ?? '2'), gapSize: p.gapSize ?? ({ sm: 12, md: 24, lg: 48 }[p.gap] ?? 24) }),
+    slots: (p) => gridTracks(p).map((_, i) => ({ name: `col${i + 1}`, label: `Column ${i + 1}` })),
     fields: [
-      { key: 'columns', label: 'Columns', type: 'select', options: opts('2', '3', '4') },
-      { key: 'gap', label: 'Gap', type: 'select', options: opts('sm', 'md', 'lg') },
+      { key: 'layout', label: 'Layout', type: 'select', options: GRID_LAYOUT_OPTIONS },
+      { key: 'widths', label: 'Column widths', type: 'text', showIf: (p) => p.layout === 'custom', help: 'Up to 4 values separated by spaces, such as 1fr 2fr or 30% 70% or 240px 1fr. Fractions (fr) fit best.' },
+      { key: 'gapSize', label: 'Gap between columns (px)', type: 'range', min: 0, max: 96, step: 4 },
+      { key: 'align', label: 'Vertical alignment', type: 'select', options: [['stretch', 'Stretch to equal height'], ['start', 'Top'], ['center', 'Middle'], ['end', 'Bottom']] },
+      { key: 'textAlign', label: 'Text alignment', type: 'select', options: [['', 'Default'], ['left', 'Left'], ['center', 'Center'], ['right', 'Right']] },
       { key: 'stack', label: 'Stack columns on mobile', type: 'toggle' },
     ],
-    Render: ({ props, slot }) => (
-      <div className={`pb-grid pb-gap-${props.gap} ${props.stack ? 'is-stack' : ''}`} style={{ '--cols': num(props.columns, 2) }}>
-        {Array.from({ length: num(props.columns, 2) }, (_, i) => (
-          <div className="pb-grid__cell" key={i}>{slot(`col${i + 1}`)}</div>
-        ))}
-      </div>
-    ),
+    Render: ({ props, slot }) => {
+      const tracks = gridTracks(props);
+      return (
+        <div
+          className={`pb-grid ${props.stack ? 'is-stack' : ''}`}
+          style={{
+            gridTemplateColumns: tracks.map((t) => (t.endsWith('fr') ? `minmax(0, ${t})` : t)).join(' '),
+            gap: num(props.gapSize, 24), alignItems: props.align || 'stretch', textAlign: props.textAlign || undefined,
+          }}
+        >
+          {tracks.map((_, i) => <div className="pb-grid__cell" key={i}>{slot(`col${i + 1}`)}</div>)}
+        </div>
+      );
+    },
   },
   {
     type: 'divider', label: 'Divider', category: 'layout', icon: 'minus',

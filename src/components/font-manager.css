@@ -26,3 +26,19 @@
 .fm__pick { display: grid; gap: 4px; margin-bottom: 8px; }
 .fm__ok { color: var(--ok); font-weight: 600; }
 .fm__custom { margin-top: 14px; }
+
+/* multi-font library */
+.fm__rejected { list-style: none; margin: 0 0 12px; padding: 0; }
+.fm__queue { display: grid; gap: 12px; margin-bottom: 14px; }
+.fm__qtable { width: 100%; border-collapse: collapse; }
+.fm__qtable th { text-align: left; font-size: 13px; font-weight: 600; color: var(--muted); padding: 4px 8px 6px 0; }
+.fm__qtable td { padding: 6px 8px 6px 0; vertical-align: top; }
+.fm__qfile { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; padding-top: 14px !important; }
+.fm__families { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 12px; }
+.fm__fam { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.fm__famhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+.fm__famname { font-size: 18px; }
+.fm__specimen { margin: 6px 0 10px; font-size: 22px; line-height: 1.3; }
+.fm__faces { display: flex; flex-wrap: wrap; gap: 6px; }
+.fm__use { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+@media (max-width: 760px) { .fm__qtable thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } .fm__qtable, .fm__qtable tbody, .fm__qtable tr, .fm__qtable td { display: block; width: 100%; } .fm__qtable tr { padding: 10px 0; border-bottom: 1px solid var(--line); } .fm__qfile { max-width: none; padding-top: 6px !important; } }
