@@ -141,7 +141,7 @@ export function buildHomeTemplate() {
     // ---- contact ----
     anchor('contact'),
     block('container', {
-      background: 'dark', padding: 'lg', maxWidth: 'full', radius: 'lg',
+      background: 'accent', padding: 'lg', maxWidth: 'full', radius: 'lg',
       slots: {
         children: [
           block('heading', { text: 'Let\u2019s make something good.', level: 'h2', size: 'xl', align: 'left', url: '' }),
@@ -169,9 +169,9 @@ export function buildHomeTemplate() {
     liveUrl: '',
     status: 'draft',
     typography: {
-      fontUrl: 'https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap',
-      headingFont: '"Schibsted Grotesk", sans-serif',
-      bodyFont: '"Schibsted Grotesk", sans-serif',
+      fontUrl: 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600&display=swap',
+      headingFont: '"Bricolage Grotesque", sans-serif',
+      bodyFont: '"Inter", sans-serif',
       customFontName: '', customFontUrl: '', fontFormat: '',
     },
     blocks,
