@@ -4,7 +4,7 @@ import { typographyStyle, useTypographyAssets } from '../typography.js';
 
 export function RenderBlocks({ blocks, ctx }) {
   return blocks.filter((b) => !b.hidden).map((b) => (
-    <div className="pb-block" key={b.id} data-type={b.type}>
+    <div className="pb-block" key={b.id} data-type={b.type} data-block-id={b.id}>
       <BlockView
         block={b}
         ctx={ctx}

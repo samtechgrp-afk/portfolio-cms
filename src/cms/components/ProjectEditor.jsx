@@ -242,7 +242,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
 
         {tab === 'builder' && (
           <div role="tabpanel" id="panel-builder" aria-labelledby="tab-builder">
-            <BuilderContext.Provider value={{ fonts: library.fonts, projects }}>
+            <BuilderContext.Provider value={{ fonts: library.fonts, projects, media: library.media }}>
             <div className="bb-workspace">
               <div>
                 <div className="bb-toolbar">

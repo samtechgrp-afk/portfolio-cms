@@ -1,6 +1,10 @@
-import { useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 import './builder.css';
-import { getWidget, resolveProps } from './WidgetRegistry.jsx';
+import { TEXT_TYPES, getWidget, paintModeOf, resolveProps } from './WidgetRegistry.jsx';
+import DesignPanel from './design/panel/DesignPanel.jsx';
+import { AlignMatrix, Box4, Field as DpField } from './design/panel/controls.jsx';
+import MediaField from './design/panel/MediaField.jsx';
+import { CropPreview } from './design/panel/FillStack.jsx';
 import { Icon } from './icons.jsx';
 import { useBuilder } from './BuilderContext.jsx';
 import { LINK_TYPES } from './widgets/shared.jsx';
@@ -81,6 +85,18 @@ function FieldControl({ field, value, onChange, owner, onPatch }) {
   switch (field.type) {
     case 'font':
       return <FontField field={field} value={value} onChange={onChange} />;
+    case 'media':
+      return <MediaField field={field} value={value} onChange={onChange} />;
+    case 'crop':
+      return (
+        <DpField label={field.label} stack hint="Drag the picture (or use the arrow keys) to choose what shows, and use Zoom to crop in.">
+          <CropPreview fill={{ url: owner.url, posX: owner.posX, posY: owner.posY, scale: owner.scale }} onChange={onPatch} />
+        </DpField>
+      );
+    case 'matrix':
+      return <DpField label={field.label} hint={field.help}><AlignMatrix ax={owner.ax} ay={owner.ay} onChange={onPatch} /></DpField>;
+    case 'box4':
+      return <DpField label={field.label} stack hint={field.help}><Box4 label={field.label} short="side" names={['T', 'R', 'B', 'L']} value={value} onChange={onChange} /></DpField>;
     case 'link':
       return <LinkField field={field} owner={owner} onPatch={onPatch} />;
     case 'textarea':
@@ -173,6 +189,8 @@ function ListField({ field, value, onChange }) {
 
 /** Side panel. Calls onChange(patch) on every edit so the canvas updates in real time. */
 export default function PropertyInspector({ block, onChange, onClose, onDuplicate, onToggleHidden, onDelete }) {
+  const [tab, setTab] = useState('content');
+  useEffect(() => { setTab('content'); }, [block?.id]);
   if (!block) {
     return (
       <aside className="bb-inspector is-empty" aria-label="Block properties">
@@ -192,7 +210,19 @@ export default function PropertyInspector({ block, onChange, onClose, onDuplicat
         <h2>{w?.label ?? block.type}</h2>
         <button type="button" className="bb-iconbtn" aria-label="Close properties" onClick={onClose}><Icon name="x" size={18} /></button>
       </header>
-      <div className="bb-inspector__body">
+      <div className="dp-tabs" role="tablist" aria-label="Property groups">
+        <button type="button" role="tab" id="tab-content" aria-selected={tab === 'content'} aria-controls="panel-content" onClick={() => setTab('content')}>Content</button>
+        <button type="button" role="tab" id="tab-design" aria-selected={tab === 'design'} aria-controls="panel-design" onClick={() => setTab('design')}>Design</button>
+      </div>
+      {tab === 'design' && (
+        <div className="bb-inspector__body" role="tabpanel" id="panel-design" aria-labelledby="tab-design">
+          <DesignPanel
+            key={block.id} block={block} props={props} onChange={onChange} mode={paintModeOf(w, props)} showType={TEXT_TYPES.has(block.type)}
+            fontControl={TEXT_TYPES.has(block.type) ? <FontField field={{ label: 'Font family', help: 'Choose from your uploaded font library or the project fonts.' }} value={props.font} onChange={(v) => onChange({ font: v })} /> : null}
+          />
+        </div>
+      )}
+      <div className="bb-inspector__body" role="tabpanel" id="panel-content" aria-labelledby="tab-content" hidden={tab !== 'content'}>
         {fields.map((f) => (
           <FieldControl key={`${block.id}-${f.key}`} field={f} value={props[f.key]} onChange={(v) => onChange({ [f.key]: v })} owner={props} onPatch={onChange} />
         ))}

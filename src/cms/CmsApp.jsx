@@ -30,6 +30,7 @@ function CmsShell({ store, user, onSignOut }) {
     const byName = (a, b) => a.family.localeCompare(b.family) || a.weight - b.weight || a.style.localeCompare(b.style);
     return {
       enabled: !!store.addFont,
+      media: store.uploadMedia ? { enabled: true, upload: store.uploadMedia, list: store.listMedia, remove: store.removeMedia } : { enabled: false },
       fonts,
       add: async (meta) => { const font = await store.addFont(meta); setFonts((all) => [...all, font].sort(byName)); return font; },
       remove: async (font) => { await store.deleteFont(font); setFonts((all) => all.filter((f) => f.id !== font.id)); },

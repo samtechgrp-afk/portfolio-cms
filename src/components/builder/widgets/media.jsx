@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../icons.jsx';
-import { ALIGN, LinkWrap, Placeholder, SandboxFrame, lightboxUrl, num, opts } from './shared.jsx';
+import { ALIGN, LinkWrap, Placeholder, cssUrl, SandboxFrame, lightboxUrl, num, opts } from './shared.jsx';
 
 /** Turns a pasted video link into something embeddable. */
 export function toVideoEmbed(raw) {
@@ -210,26 +210,70 @@ function Maps({ props }) {
   return <iframe className="pb-frame" title={`Map of ${props.query}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" style={{ height: num(props.height, 360) }} src={`https://maps.google.com/maps?${q}`} />;
 }
 
+/** Image in a box with a fit mode (fill, fit, crop, tile) and an optional mask. Drawn as a background so crop, zoom and tile are exact. */
+function ImageBox({ props }) {
+  const url = cssUrl(props.url);
+  const px = num(props.posX, 50), py = num(props.posY, 50);
+  const size = { fill: 'cover', fit: 'contain', crop: `${Math.max(100, num(props.scale, 100))}% auto`, tile: `${Math.max(16, num(props.tile, 200))}px auto` }[props.fit] || 'cover';
+  const clip = props.mask === 'ellipse' ? 'ellipse(50% 50% at 50% 50%)'
+    : props.mask === 'rounded' ? `inset(0 round ${Math.max(0, num(props.maskRound, 24))}px)`
+      : props.mask === 'inset' ? `inset(${num(props.maskT, 0)}% ${num(props.maskR, 0)}% ${num(props.maskB, 0)}% ${num(props.maskL, 0)}%)` : undefined;
+  const box = (
+    <div
+      className="pb-imagefit" role="img" aria-label={props.alt || undefined} aria-hidden={props.alt ? undefined : true}
+      style={{ height: Math.max(40, num(props.boxH, 360)), backgroundImage: url, backgroundSize: size, backgroundPosition: `${px}% ${py}%`, backgroundRepeat: props.fit === 'tile' ? 'repeat' : 'no-repeat', clipPath: clip }}
+    />
+  );
+  return (
+    <figure className="pb-image pb-image--box">
+      <LinkWrap href={props.link} newTab>{box}</LinkWrap>
+      {props.caption && <figcaption>{props.caption}</figcaption>}
+    </figure>
+  );
+}
+
 export const mediaWidgets = [
   {
     type: 'image', label: 'Image', category: 'media', icon: 'image',
-    description: 'A single image with optional caption and link.',
-    defaults: { url: '', alt: '', caption: '', link: '', width: 'full', align: 'center', rounded: true },
+    description: 'A single image with fit modes (fill, fit, crop, tile), a mask, an optional caption and link.',
+    defaults: {
+      url: '', alt: '', caption: '', link: '', width: 'full', align: 'center', rounded: true,
+      fit: 'natural', boxH: 360, posX: 50, posY: 50, scale: 100, tile: 200, mask: 'none', maskRound: 24, maskT: 0, maskR: 0, maskB: 0, maskL: 0,
+    },
     fields: [
-      { key: 'url', label: 'Image link', type: 'url', help: 'A public https:// link, such as a Google Drive thumbnail link.' },
+      { key: 'url', label: 'Image', type: 'media', help: 'Paste a public https:// link (such as a Google Drive thumbnail link), upload a file, or pick one from the library.' },
       { key: 'alt', label: 'Description (alt text)', type: 'text' },
       { key: 'caption', label: 'Caption', type: 'text' },
       { key: 'link', label: 'Link when clicked (optional)', type: 'url' },
-      { key: 'width', label: 'Width', type: 'select', options: opts('auto', 'full', 'half') },
-      ALIGN,
-      { key: 'rounded', label: 'Rounded corners', type: 'toggle' },
+      {
+        key: 'fit', label: 'Fit', type: 'select',
+        options: [['natural', 'Natural size (default)'], ['fill', 'Fill (cover the box)'], ['fit', 'Fit (show all of it)'], ['crop', 'Crop (zoom and move)'], ['tile', 'Tile (repeat)']],
+        help: 'Fill and Crop trim the picture to the box. Fit keeps all of it. Tile repeats a small picture as a pattern.',
+      },
+      { key: 'boxH', label: 'Box height (px)', type: 'range', min: 80, max: 900, step: 10, unit: 'px', showIf: (p) => p.fit !== 'natural' },
+      { key: 'scale', label: 'Zoom', type: 'range', min: 100, max: 400, step: 5, unit: '%', showIf: (p) => p.fit === 'crop' },
+      { key: 'cropPad', label: 'Crop', type: 'crop', showIf: (p) => p.fit === 'crop' && !!p.url },
+      { key: 'tile', label: 'Tile size (px)', type: 'range', min: 16, max: 600, step: 8, unit: 'px', showIf: (p) => p.fit === 'tile' },
+      { key: 'mask', label: 'Mask', type: 'select', options: [['none', 'None'], ['rounded', 'Rounded rectangle'], ['ellipse', 'Ellipse / circle'], ['inset', 'Trim edges']], showIf: (p) => p.fit !== 'natural' },
+      { key: 'maskRound', label: 'Corner roundness (px)', type: 'range', min: 0, max: 200, step: 2, unit: 'px', showIf: (p) => p.fit !== 'natural' && p.mask === 'rounded' },
+      { key: 'maskT', label: 'Trim top', type: 'range', min: 0, max: 45, step: 1, unit: '%', showIf: (p) => p.fit !== 'natural' && p.mask === 'inset' },
+      { key: 'maskR', label: 'Trim right', type: 'range', min: 0, max: 45, step: 1, unit: '%', showIf: (p) => p.fit !== 'natural' && p.mask === 'inset' },
+      { key: 'maskB', label: 'Trim bottom', type: 'range', min: 0, max: 45, step: 1, unit: '%', showIf: (p) => p.fit !== 'natural' && p.mask === 'inset' },
+      { key: 'maskL', label: 'Trim left', type: 'range', min: 0, max: 45, step: 1, unit: '%', showIf: (p) => p.fit !== 'natural' && p.mask === 'inset' },
+      { key: 'width', label: 'Width', type: 'select', options: opts('auto', 'full', 'half'), showIf: (p) => p.fit === 'natural' },
+      { key: 'align', label: 'Alignment', type: 'select', options: opts('left', 'center', 'right'), showIf: (p) => p.fit === 'natural' },
+      { key: 'rounded', label: 'Rounded corners', type: 'toggle', showIf: (p) => p.fit === 'natural' },
     ],
-    Render: ({ props }) => !props.url ? <Placeholder>Add an image link in the properties panel.</Placeholder> : (
-      <figure className={`pb-image w-${props.width} a-${props.align} ${props.rounded ? 'is-round' : ''}`}>
-        <LinkWrap href={props.link} newTab><img src={props.url} alt={props.alt || ''} loading="lazy" referrerPolicy="no-referrer" /></LinkWrap>
-        {props.caption && <figcaption>{props.caption}</figcaption>}
-      </figure>
-    ),
+    Render: ({ props }) => {
+      if (!props.url) return <Placeholder>Add an image link in the properties panel.</Placeholder>;
+      if (props.fit && props.fit !== 'natural') return <ImageBox props={props} />;
+      return (
+        <figure className={`pb-image w-${props.width} a-${props.align} ${props.rounded ? 'is-round' : ''}`}>
+          <LinkWrap href={props.link} newTab><img src={props.url} alt={props.alt || ''} loading="lazy" referrerPolicy="no-referrer" /></LinkWrap>
+          {props.caption && <figcaption>{props.caption}</figcaption>}
+        </figure>
+      );
+    },
   },
   {
     type: 'video', label: 'Video', category: 'media', icon: 'video',

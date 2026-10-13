@@ -1,5 +1,7 @@
 /* Small built-in icon set (24x24 stroke icons). No dependency needed. */
 const P = {
+  circle: '<circle cx="12" cy="12" r="9"/>',
+  hexagon: '<polygon points="12 2 21 7 21 17 12 22 3 17 3 7 12 2"/>',
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
   heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
   check: '<polyline points="20 6 9 17 4 12"/>',

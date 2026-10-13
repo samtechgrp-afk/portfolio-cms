@@ -33,6 +33,10 @@ async function uploadFontFile(file) {
 }
 const removeFontFile = async (path) => { if (path) await supabase.storage.from('fonts').remove([decodeURIComponent(path)]); };
 
+const MEDIA_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
+const MEDIA_MAX = 8 * 1024 * 1024;
+const mediaUrl = (path) => supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function fail(error, fallback) {
@@ -73,6 +77,28 @@ export const supabaseStore = {
   },
   /** Uploads a font file to the public `fonts` bucket. Returns { url, path }. Names are random, so files never overwrite each other. */
   uploadFont: uploadFontFile,
+  /** Uploads an image to the public `media` bucket (PNG, JPG, WebP, GIF or AVIF up to 8 MB). Returns { url, path, name }. */
+  async uploadMedia(file) {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const type = MEDIA_MIME[ext];
+    if (!type) { const e = new Error('Unsupported image type.'); e.userMessage = 'Use a PNG, JPG, WebP, GIF or AVIF image.'; throw e; }
+    if (file.size > MEDIA_MAX) { const e = new Error('Image too large.'); e.userMessage = 'Images can be up to 8 MB. Resize it and try again.'; throw e; }
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const typed = new File([file], file.name, { type });
+    const { error } = await supabase.storage.from('media').upload(path, typed, { contentType: type, cacheControl: '31536000', upsert: false });
+    if (error) fail(error, "Couldn't upload the image.");
+    return { url: mediaUrl(path), path, name: file.name };
+  },
+  /** Newest first. */
+  async listMedia() {
+    const { data, error } = await supabase.storage.from('media').list('', { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
+    if (error) fail(error, "Couldn't load the media library.");
+    return (data || []).filter((o) => o.id && MEDIA_MIME[(o.name.split('.').pop() || '').toLowerCase()]).map((o) => ({ path: o.name, url: mediaUrl(o.name), size: o.metadata?.size, createdAt: o.created_at }));
+  },
+  async removeMedia(path) {
+    const { error } = await supabase.storage.from('media').remove([path]);
+    if (error) fail(error, "Couldn't delete the image.");
+  },
   /** Deletes a previously uploaded font by its public URL. Best effort: a leftover file is harmless. */
   async removeFont(url) {
     await removeFontFile(url?.split('/storage/v1/object/public/fonts/')[1]);

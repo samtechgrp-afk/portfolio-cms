@@ -74,6 +74,19 @@ src/
 
 **Text readability gradient.** Hero Banner (image or video background), Hero Carousel and Image Banner share one overlay (`widgets/gradient.jsx`): a smooth multi-stop fade from clear to dark that sits between the media and the text (text is on a higher z-index, and the overlay never catches clicks). Properties: `gradientEnabled` (default on), `gradientDirection` (`bottom-to-top`, `top-to-bottom`, `radial`), `gradientOpacity` (0 to 100, default 70) and `gradientColor` (default `#101114`). **Image Banner** (`imagebanner`) is a new widget: an image with title, subtitle and buttons on top. Because the editor preview and the public site use the same widget code, the overlay looks identical in both.
 
+**Design engine (Figma-style controls).** Every block has a **Design** tab next to its **Content** tab. It edits `props.design`, which `design/css.js` turns into CSS, so the editor and the public site render identically. Blocks with no design settings render exactly as before.
+- **Layout:** width and height (px, %, vh, vw, auto), aspect-ratio lock, min and max size, X and Y offset, rotation, clip content, Fixed / Hug / Fill sizing inside a Frame, and absolute position with Left, Right, Top, Bottom, Center and Scale pins.
+- **Appearance:** opacity, blend mode, corner radius (one value or four) and corner smoothing (squircle, shown in browsers that support CSS `corner-shape`; others keep the round corner).
+- **Fill:** a stack of fills (solid, linear, radial, angular, diamond, image), each with opacity and one of 14 blend modes. Gradients have draggable colour stops. Colours accept Hex, RGB or HSL plus alpha. Image fills have Fill, Fit, Crop (drag and zoom) and Tile.
+- **Stroke:** weight, inside, centre or outside, any combination of sides, solid, dashed or custom dash and gap, caps and joins.
+- **Effects:** drop shadow, inner shadow, layer blur, background blur (frosted glass).
+- **States:** Default, Hover, Active, Focus and Disabled. A state stores only what differs from Default. The canvas previews the state while its tab is open.
+- **Typography** (text blocks): font family, weight, italic, size (px, rem, em), line height (auto, px, %), letter spacing (px, %), paragraph spacing and indent, horizontal and vertical alignment, decoration, case, and resizing (auto width, auto height, fixed with ellipsis).
+
+New blocks: **Frame** (auto layout: row, column or wrap, gap or auto spacing, padding, 9-point alignment grid, baseline alignment), **Rectangle**, **Ellipse**, **Polygon**, **Star** (points and inner radius) and **Line & Arrow** (flat, round, square, arrow, triangle, diamond and circle caps). **Image** gained Fill, Fit, Crop, Tile and masks, plus Upload and a Media library (images go to the public `media` bucket in Supabase, up to 8 MB).
+
+Code: `design/` (model, colour, css, preview, DesignWrap), `design/panel/` (inspector UI, editor only), `widgets/frame.jsx`, `widgets/shape.jsx`.
+
 To add a widget: create a definition (`type`, `label`, `category`, `defaults`, `fields`, `Render`) in `widgets/` and add it to the array there. Field types include `font` (library picker) and `link` (project, live site, anchor or URL).
 
 ## Testing
@@ -150,7 +163,7 @@ Click **Edit home page** on the dashboard. If no `home` project exists yet, it o
 - Videos use a click-to-play poster (Google Drive or YouTube). Galleries support masonry layout and a lightbox.
 - The public site keeps its built-in layout until `home` is **Published**. If the page is missing, a draft, empty or fails to load, the built-in layout is shown.
 
-Widget count: 40.
+Widget count: 46.
 
 ## Font upload notes
 
