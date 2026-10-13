@@ -7,6 +7,7 @@ import { collectUsedFamilies } from '../components/typography.js';
 import Login from './components/Login.jsx';
 import { localStorageStore } from './lib/projectsStore.js';
 import { makeShowcaseProject } from './lib/seed.js';
+import { buildHomeTemplate } from './lib/homeTemplate.js';
 
 const SITE_URL = 'https://samuel-prah-portfolio.vercel.app';
 const IMPORT_FLAG = 'portfolio.cms.import-dismissed';
@@ -165,7 +166,8 @@ function CmsShell({ store, user, onSignOut }) {
             onOpenFonts={() => setView({ name: 'fonts' })}
             onEditHome={() => {
               const home = projects.find((p) => p.slug === 'home');
-              setView(home ? { name: 'edit', project: home } : { name: 'edit', template: { title: 'Home', slug: 'home', summary: 'The home page of my portfolio.' } });
+              // First time: start from the current landing page, already converted into blocks.
+              setView(home ? { name: 'edit', project: home } : { name: 'edit', template: buildHomeTemplate() });
             }}
             onDelete={remove}
             onToggleStatus={toggleStatus}

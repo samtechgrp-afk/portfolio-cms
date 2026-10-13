@@ -46,6 +46,11 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
 
   const errors = useMemo(() => validateProject(values, projects), [values, projects]);
   const dirty = JSON.stringify(values) !== JSON.stringify(initial.current);
+  // Published projects, for Project Grid blocks in the canvas and preview.
+  const pageProjects = useMemo(
+    () => projects.filter((p) => p.status === 'published' && p.slug !== HOME_SLUG).map((p) => ({ title: p.title, slug: p.slug, summary: p.summary, coverUrl: p.coverUrl, categories: p.categories })),
+    [projects]
+  );
   const suggestions = useMemo(() => [...new Set(projects.flatMap((p) => p.categories))].sort(), [projects]);
   const err = (field) => ((touched[field] || submitted) ? errors[field] : undefined);
   const selected = selectedId ? findBlock(values.blocks, selectedId) : null;
@@ -249,7 +254,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
                 </div>
                 <div className="bb-canvaswrap">
                   <BlockCanvas
-                    blocks={values.blocks} typography={values.typography} title={values.title} fonts={library.fonts}
+                    blocks={values.blocks} typography={values.typography} title={values.title} fonts={library.fonts} projects={pageProjects}
                     selectedId={selectedId} onSelect={setSelectedId}
                     onAdd={(target) => setPicker({ open: true, target })}
                     onMove={(id, dir) => commit(moveBlock(blocksRef.current, id, dir))}
@@ -279,7 +284,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
               <p className="cms-muted">This is how the page will look, with your fonts and live embeds.</p>
             </div>
             <div className="bb-previewframe" style={{ maxWidth: DEVICES.find(([id]) => id === device)[2] }}>
-              <PageRenderer blocks={values.blocks} typography={values.typography} title={values.title} fonts={library.fonts} />
+              <PageRenderer blocks={values.blocks} typography={values.typography} title={values.title} fonts={library.fonts} projects={pageProjects} />
             </div>
           </div>
         )}

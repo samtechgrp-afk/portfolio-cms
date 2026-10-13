@@ -24,6 +24,9 @@ export const cssUrl = (u) => {
   }
 };
 
+/** Drive thumbnail links carry a size (sz=w900). The lightbox asks for a bigger one. */
+export const lightboxUrl = (u) => (/^https:\/\/drive\.google\.com\/thumbnail\?/.test(u || '') ? u.replace(/([?&]sz=w)\d+/, '$12000') : u);
+
 export const safeId = (s) => (s || '').replace(/[^a-zA-Z0-9_-]/g, '-');
 
 /** opts('a', ['b', 'Label B']) -> [['a','A'], ['b','Label B']] */

@@ -24,7 +24,10 @@ const toFont = (r) => ({ id: r.id, family: r.family, fileUrl: r.file_url, storag
 async function uploadFontFile(file) {
   const ext = fontExtension(file.name);
   const path = `${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from('fonts').upload(path, file, { contentType: FONT_MIME[ext], cacheControl: '31536000', upsert: false });
+  // Windows and some other systems label font files with older or empty MIME types. The browser sends that label to
+  // Storage, which rejects it. Re-wrapping the same bytes with the standard font type avoids that.
+  const typed = new File([file], file.name, { type: FONT_MIME[ext] });
+  const { error } = await supabase.storage.from('fonts').upload(path, typed, { contentType: FONT_MIME[ext], cacheControl: '31536000', upsert: false });
   if (error) fail(error, "Couldn't upload the font.");
   return { url: supabase.storage.from('fonts').getPublicUrl(path).data.publicUrl, path };
 }
@@ -37,6 +40,8 @@ function fail(error, fallback) {
   if (error?.code === '23505') e.userMessage = 'Another project already uses this slug.';
   else if (error?.code === '42501' || error?.code === 'PGRST116') e.userMessage = "You don't have permission to do that. Sign in as the site owner.";
   else if (error?.message && /fetch|network/i.test(error.message)) e.userMessage = "Couldn't reach the database. Check your connection.";
+  // Anything else: show what the server actually said, so a failure can be diagnosed instead of guessed at.
+  else if (error?.message) e.userMessage = `${fallback} (${error.message})`;
   e.cause = error;
   throw e;
 }

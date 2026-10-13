@@ -127,3 +127,20 @@ export function moveTo(blocks, id, target, index) {
   if (sameList && adjusted === from.index) return blocks;
   return insertAt(removeBlock(blocks, id), target, block, adjusted);
 }
+
+/** True if the page contains a block of this type (hidden blocks do not count). */
+export function usesBlockType(blocks, type) {
+  return blocks.some((b) => !b.hidden && (b.type === type || Object.values(slotsOf(b) || {}).some((list) => usesBlockType(list, type))));
+}
+
+/** Menu Anchor blocks that have a menu label: [{ id, label }], in page order. The home page builds the site menu from these. */
+export function collectMenuLinks(blocks) {
+  const out = [];
+  const walk = (list) => list.forEach((b) => {
+    if (b.hidden) return;
+    if (b.type === 'anchor' && b.props?.label?.trim() && b.props?.anchorId) out.push({ id: String(b.props.anchorId).replace(/[^a-zA-Z0-9_-]/g, '-'), label: b.props.label.trim() });
+    Object.values(slotsOf(b) || {}).forEach(walk);
+  });
+  walk(blocks);
+  return out;
+}

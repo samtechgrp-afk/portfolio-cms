@@ -115,7 +115,7 @@ function BlockItem({ block, index, count }) {
   );
 }
 
-export default function BlockCanvas({ blocks, typography, title, fonts = [], selectedId, onSelect, onAdd, onMove, onDuplicate, onToggleHidden, onDropBlock, onDelete }) {
+export default function BlockCanvas({ blocks, typography, title, fonts = [], projects = [], selectedId, onSelect, onAdd, onMove, onDuplicate, onToggleHidden, onDropBlock, onDelete }) {
   const [pending, setPending] = useState(null);
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
@@ -124,7 +124,7 @@ export default function BlockCanvas({ blocks, typography, title, fonts = [], sel
   const requestDelete = (block) => (countNested(block) > 0 ? setPending(block) : onDelete(block.id));
   const endDrag = () => { setDragId(null); setDrop(null); };
   const value = {
-    selectedId, onSelect, onAdd, onMove, onDuplicate, onToggleHidden, onRequestDelete: requestDelete, ctx: { projectTitle: title },
+    selectedId, onSelect, onAdd, onMove, onDuplicate, onToggleHidden, onRequestDelete: requestDelete, ctx: { projectTitle: title, projects },
     dragId, drop, setDrop, startDrag: setDragId, endDrag, onDropBlock,
   };
 

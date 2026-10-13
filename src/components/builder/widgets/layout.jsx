@@ -111,11 +111,14 @@ export const layoutWidgets = [
   {
     type: 'anchor', label: 'Menu Anchor', category: 'layout', icon: 'anchor',
     description: 'An invisible jump target. Link to it with #your-id.',
-    defaults: { anchorId: 'section-1' },
-    fields: [{ key: 'anchorId', label: 'Anchor ID', type: 'text', help: 'Letters, numbers, hyphens. Link to it with a button or menu using #this-id.' }],
+    defaults: { anchorId: 'section-1', label: '' },
+    fields: [
+      { key: 'anchorId', label: 'Anchor ID', type: 'text', help: 'Letters, numbers, hyphens. Link to it with a button using #this-id.' },
+      { key: 'label', label: 'Show in the site menu as', type: 'text', help: 'Leave empty to keep it out of the top menu. On the home page, anchors with a label become the menu links.' },
+    ],
     Render: ({ props, editing }) => (
       <div id={safeId(props.anchorId) || undefined} className={`pb-anchor ${editing ? 'is-edit' : ''}`}>
-        {editing && <><Icon name="anchor" size={14} /> #{safeId(props.anchorId)}</>}
+        {editing && <><Icon name="anchor" size={14} /> #{safeId(props.anchorId)}{props.label ? ` (menu: ${props.label})` : ''}</>}
       </div>
     ),
   },

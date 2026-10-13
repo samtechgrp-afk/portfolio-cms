@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../icons.jsx';
-import { ALIGN, LinkWrap, Placeholder, SandboxFrame, num, opts } from './shared.jsx';
+import { ALIGN, LinkWrap, Placeholder, SandboxFrame, lightboxUrl, num, opts } from './shared.jsx';
 
 /** Turns a pasted video link into something embeddable. */
 export function toVideoEmbed(raw) {
@@ -25,7 +25,20 @@ export function toVideoEmbed(raw) {
   return { kind: 'iframe', src: url.href };
 }
 
-function Video({ props }) {
+const driveId = (src) => src.match(/\/file\/d\/([\w-]+)/)?.[1];
+
+/** A still image to show before the video loads: a custom poster, a Drive thumbnail, or a YouTube thumbnail. */
+function posterFor(props, embed) {
+  if (/^https?:\/\//i.test(props.poster || '')) return props.poster;
+  if (embed.kind !== 'iframe') return '';
+  const drive = driveId(embed.src);
+  if (drive) return `https://drive.google.com/thumbnail?id=${drive}&sz=w1400`;
+  const yt = embed.src.match(/youtube-nocookie\.com\/embed\/([\w-]+)/)?.[1];
+  return yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : '';
+}
+
+function Video({ props, editing }) {
+  const [playing, setPlaying] = useState(false);
   const ratio = props.aspect || '16/9';
   if (props.mode === 'html') {
     return props.code?.trim()
@@ -34,11 +47,22 @@ function Video({ props }) {
   }
   const embed = toVideoEmbed(props.url);
   if (!embed) return <Placeholder icon="video">Add a YouTube, Vimeo, Google Drive or .mp4 link.</Placeholder>;
+  const poster = props.facade ? posterFor(props, embed) : '';
+  const facade = embed.kind === 'iframe' && poster && !playing;
+  const src = playing && /youtube-nocookie/.test(embed.src) ? `${embed.src}?autoplay=1` : embed.src;
   return (
     <div className="pb-media" style={{ aspectRatio: ratio }}>
-      {embed.kind === 'file'
-        ? <video src={embed.src} controls preload="metadata" />
-        : <iframe src={embed.src} title="Video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />}
+      {facade ? (
+        <button type="button" className="pb-facade" aria-label={`Play video${props.caption ? `: ${props.caption}` : ''}`} onClick={() => setPlaying(true)} tabIndex={editing ? -1 : 0}>
+          <img src={poster} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => e.currentTarget.remove()} />
+          <span className="pb-facade__play"><Icon name="play" size={26} fill="currentColor" /></span>
+          {props.caption && <span className="pb-facade__cap">{props.caption}</span>}
+        </button>
+      ) : embed.kind === 'file' ? (
+        <video src={embed.src} controls preload="metadata" />
+      ) : (
+        <iframe src={src} title={props.caption || 'Video'} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
+      )}
     </div>
   );
 }
@@ -72,7 +96,7 @@ function Gallery({ props }) {
 
   return (
     <>
-      <div className={`pb-gallery pb-gap-${props.gap}`} style={{ '--cols': num(props.columns, 3) }}>
+      <div className={`pb-gallery pb-gap-${props.gap} ${props.layout === 'masonry' ? 'is-masonry' : ''}`} style={{ '--cols': num(props.columns, 3) }}>
         {items.map((it, i) => {
           const pos = shown.findIndex((x) => x.i === i);
           return (
@@ -95,7 +119,7 @@ function Gallery({ props }) {
         >
           {current && (
             <figure>
-              <img src={current.url} alt={current.alt || ''} referrerPolicy="no-referrer" />
+              <img src={lightboxUrl(current.url)} alt={current.alt || ''} referrerPolicy="no-referrer" />
               {(current.caption || current.alt) && <figcaption>{current.caption || current.alt}</figcaption>}
             </figure>
           )}
@@ -210,20 +234,24 @@ export const mediaWidgets = [
   {
     type: 'video', label: 'Video', category: 'media', icon: 'video',
     description: 'Embed a video from a link, or paste your own embed code.',
-    defaults: { mode: 'url', url: '', code: '', aspect: '16/9' },
+    defaults: { mode: 'url', url: '', code: '', aspect: '16/9', facade: true, caption: '', poster: '' },
     fields: [
       { key: 'mode', label: 'Source', type: 'select', options: [['url', 'Embed URL'], ['html', 'HTML embed code']] },
       { key: 'url', label: 'Video link', type: 'url', showIf: (p) => p.mode !== 'html', help: 'YouTube, Vimeo, Google Drive or a direct .mp4 link.' },
       { key: 'code', label: 'Embed code', type: 'textarea', rows: 6, mono: true, showIf: (p) => p.mode === 'html', help: 'Runs in a sandbox so it cannot affect the rest of the page.' },
       { key: 'aspect', label: 'Aspect ratio', type: 'select', options: [['16/9', '16:9'], ['4/3', '4:3'], ['1/1', 'Square'], ['9/16', 'Vertical 9:16']] },
+      { key: 'facade', label: 'Show a picture first and load the video on click', type: 'toggle', showIf: (p) => p.mode !== 'html', help: 'Keeps the page light. Works with YouTube and Google Drive links.' },
+      { key: 'caption', label: 'Caption on the picture (optional)', type: 'text', showIf: (p) => p.mode !== 'html' && p.facade },
+      { key: 'poster', label: 'Custom picture link (optional)', type: 'url', showIf: (p) => p.mode !== 'html' && p.facade },
     ],
     Render: Video,
   },
   {
     type: 'gallery', label: 'Basic Gallery', category: 'media', icon: 'grid',
     description: 'A grid of images that open in a lightbox, with optional captions.',
-    defaults: { images: [{ ...imageItem, caption: '' }, { ...imageItem, caption: '' }, { ...imageItem, caption: '' }], columns: '3', gap: 'md', ratio: '1/1', lightbox: true, showCaptions: false },
+    defaults: { images: [{ ...imageItem, caption: '' }, { ...imageItem, caption: '' }, { ...imageItem, caption: '' }], columns: '3', gap: 'md', ratio: '1/1', lightbox: true, showCaptions: false, layout: 'grid' },
     fields: [
+      { key: 'layout', label: 'Layout', type: 'select', options: [['grid', 'Even grid'], ['masonry', 'Masonry (keeps each image\u2019s own shape)']] },
       { key: 'columns', label: 'Columns', type: 'select', options: opts('2', '3', '4', '5') },
       { key: 'gap', label: 'Gap', type: 'select', options: opts('sm', 'md', 'lg') },
       { key: 'ratio', label: 'Image shape', type: 'select', options: RATIOS },

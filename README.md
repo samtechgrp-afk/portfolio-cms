@@ -137,3 +137,19 @@ The CMS is wired to the Supabase project **samuel-portfolio** (London, `mzgbiqer
 - **Keep sign-ups off.** Writes are limited to the owner's email by row-level security, but turn off public sign-ups anyway so strangers can't create accounts.
 - **The public portfolio does not read this data yet.** Use "Export published (JSON)" to download `projects.json` (it includes `blocks` and `typography`), or have the portfolio fetch published rows from the backend and render them with `PageRenderer`.
 - **HTML and embed blocks run in a sandbox.** The HTML block and the Video "HTML code" mode render inside a sandboxed iframe, so pasted scripts cannot read the CMS or its stored data.
+
+
+## Editing the landing page (slug `home`)
+
+Click **Edit home page** on the dashboard. If no `home` project exists yet, it opens a ready-made copy of the current landing page (intro, tools and fields, motion videos, campaign / brand / print galleries, about, skills, experience, contact). Every part is an ordinary block you can edit, reorder, hide or delete.
+
+- Sections that appear in the site menu are **Menu Anchor** blocks with a *label*. Anchors with no label are link targets only.
+- **Project grid** shows your published projects, **Detail list**, **Tag list** and **Button group** cover the intro facts, skills, experience and buttons.
+- Videos use a click-to-play poster (Google Drive or YouTube). Galleries support masonry layout and a lightbox.
+- The public site keeps its built-in layout until `home` is **Published**. If the page is missing, a draft, empty or fails to load, the built-in layout is shown.
+
+Widget count: 39.
+
+## Font upload notes
+
+Font files are re-labelled with the standard font type before upload, and the bucket accepts the older labels some Windows browsers send (`application/x-font-ttf`, `font/sfnt`, `application/octet-stream` and similar). If an upload still fails, the message now includes the server's reason.
