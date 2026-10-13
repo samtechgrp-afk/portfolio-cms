@@ -7,6 +7,7 @@ import { codeWidgets } from './widgets/code.jsx';
 import { heroWidgets } from './widgets/hero.jsx';
 import { listWidgets } from './widgets/lists.jsx';
 import { heroCarouselWidget } from './widgets/HeroCarouselBlock.jsx';
+import { bannerWidgets } from './widgets/banner.jsx';
 import { FONT_FIELD } from './widgets/shared.jsx';
 import { fontScopeStyle } from '../typography.js';
 import { newBlockId } from './blockTree.js';
@@ -33,7 +34,7 @@ const FONT_TYPES = new Set(['heading', 'text', 'button', 'readmore', 'testimonia
 const withFont = (w) => (FONT_TYPES.has(w.type) ? { ...w, defaults: { ...w.defaults, font: '' }, fields: [...w.fields, FONT_FIELD] } : w);
 
 export const ALL_WIDGETS = [
-  ...layoutWidgets, ...basicWidgets, ...listWidgets, ...mediaWidgets, heroCarouselWidget, ...heroWidgets, ...cardWidgets, ...interactiveWidgets, ...codeWidgets,
+  ...layoutWidgets, ...basicWidgets, ...listWidgets, ...mediaWidgets, heroCarouselWidget, ...heroWidgets, ...bannerWidgets, ...cardWidgets, ...interactiveWidgets, ...codeWidgets,
 ].map(withFont);
 export const WIDGETS = Object.fromEntries(ALL_WIDGETS.map((w) => [w.type, w]));
 

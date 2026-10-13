@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import './HeroCarouselBlock.css';
 import { Icon } from '../icons.jsx';
 import { LINK_FIELD, LinkWrap, Placeholder, cssUrl, isExternalHref, num, resolveLink } from './shared.jsx';
+import { GRADIENT_DEFAULTS, GradientOverlay, gradientFields } from './gradient.jsx';
 
 /**
  * Glassmorphism hero carousel (`hero-carousel`).
@@ -45,8 +46,7 @@ export function HeroCarousel({ props, editing }) {
         {items.map((it, i) => (
           <div key={i} className={`banner-bg ${i === idx ? 'is-active' : ''}`} style={{ backgroundImage: cssUrl(it.backdropUrl) }} aria-hidden="true" />
         ))}
-        <div className="hc__shade hc__shade--top" />
-        <div className="hc__shade hc__shade--bottom" />
+        <GradientOverlay props={props} />
         <div className="hc__info" aria-live="polite">
           <p className="hc__meta">{current.year && <span>{current.year}</span>}{current.category && <span>{current.category}</span>}</p>
           <h2 className="hc__title">{current.title}</h2>
@@ -81,7 +81,7 @@ export const heroCarouselWidget = {
   type: 'hero-carousel', label: 'Hero Carousel', category: 'media', icon: 'film',
   description: 'A cinematic banner with a glass bar of poster thumbnails that switch the background.',
   defaults: {
-    label: 'Featured work', ctaLabel: 'Watch now', height: 520, autoplay: false, interval: 6,
+    label: 'Featured work', ctaLabel: 'Watch now', height: 520, autoplay: false, interval: 6, ...GRADIENT_DEFAULTS,
     items: [
       { ...newItem, title: 'Featured project', year: '2026', category: 'Motion graphics' },
       { ...newItem, title: 'Second project', year: '2025', category: 'Brand film' },
@@ -92,6 +92,7 @@ export const heroCarouselWidget = {
     { key: 'label', label: 'Accessible name', type: 'text', help: 'Read out by screen readers, not shown.' },
     { key: 'ctaLabel', label: 'Button label', type: 'text', help: 'The button uses the active item\u2019s link.' },
     { key: 'height', label: 'Height (px)', type: 'range', min: 320, max: 800, step: 20 },
+    ...gradientFields(),
     { key: 'autoplay', label: 'Rotate automatically', type: 'toggle' },
     { key: 'interval', label: 'Seconds per item', type: 'number', min: 2, max: 30, showIf: (p) => p.autoplay },
     {

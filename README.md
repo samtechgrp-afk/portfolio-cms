@@ -64,13 +64,15 @@ src/
 - **Interactive & UI (7):** Star Rating, Counter, Tabs, Accordion, Social Icons, Progress Bar, Alert
 - **Custom Code (3):** Shortcode, HTML, **Code Snippet** (highlighted JS, TS, JSON, CSS, HTML, Python, Bash, SQL)
 
-**Hero Carousel** (`hero-carousel`) is a dark 12px-rounded banner with top and bottom gradient shading and a floating glass bar (`backdrop-filter: blur(16px)`, `rgba(255,255,255,0.12)`) of poster thumbnails showing title, year and category. Clicking a thumbnail cross-fades the `.banner-bg` background over 0.6s ease, marks the thumbnail active and shows an animated play icon; the arrow keys move between items, and the active item's link becomes the button. Add, remove, reorder and edit items (title, year, category, backdrop, poster, target link) in the properties panel. Code: `widgets/HeroCarouselBlock.jsx` and `.css`.
+**Hero Carousel** (`hero-carousel`) is a dark 12px-rounded banner with a configurable readability gradient and a floating glass bar (`backdrop-filter: blur(16px)`, `rgba(255,255,255,0.12)`) of poster thumbnails showing title, year and category. Clicking a thumbnail cross-fades the `.banner-bg` background over 0.6s ease, marks the thumbnail active and shows an animated play icon; the arrow keys move between items, and the active item's link becomes the button. Add, remove, reorder and edit items (title, year, category, backdrop, poster, target link) in the properties panel. Code: `widgets/HeroCarouselBlock.jsx` and `.css`.
 
 ## Editing blocks
 
 - Drag the grip (top left of a block) to reorder, including into and out of containers, or use the up and down buttons. A blue line shows where the block will land. Undo (or Ctrl+Z) reverses it.
 - The eye button hides a block. It stays in the page data but is not shown on the site; the canvas dims it and labels it Hidden.
 - Duplicate, delete and the property panel work as before. The Preview tab shows the page as visitors see it, at desktop, tablet or mobile width.
+
+**Text readability gradient.** Hero Banner (image or video background), Hero Carousel and Image Banner share one overlay (`widgets/gradient.jsx`): a smooth multi-stop fade from clear to dark that sits between the media and the text (text is on a higher z-index, and the overlay never catches clicks). Properties: `gradientEnabled` (default on), `gradientDirection` (`bottom-to-top`, `top-to-bottom`, `radial`), `gradientOpacity` (0 to 100, default 70) and `gradientColor` (default `#101114`). **Image Banner** (`imagebanner`) is a new widget: an image with title, subtitle and buttons on top. Because the editor preview and the public site use the same widget code, the overlay looks identical in both.
 
 To add a widget: create a definition (`type`, `label`, `category`, `defaults`, `fields`, `Render`) in `widgets/` and add it to the array there. Field types include `font` (library picker) and `link` (project, live site, anchor or URL).
 
@@ -148,7 +150,7 @@ Click **Edit home page** on the dashboard. If no `home` project exists yet, it o
 - Videos use a click-to-play poster (Google Drive or YouTube). Galleries support masonry layout and a lightbox.
 - The public site keeps its built-in layout until `home` is **Published**. If the page is missing, a draft, empty or fails to load, the built-in layout is shown.
 
-Widget count: 39.
+Widget count: 40.
 
 ## Font upload notes
 

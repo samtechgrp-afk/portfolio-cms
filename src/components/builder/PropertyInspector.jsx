@@ -100,7 +100,7 @@ function FieldControl({ field, value, onChange, owner, onPatch }) {
         <FieldShell id={id} field={field}>
           <div className="bb-range">
             <input id={id} type="range" min={field.min} max={field.max} step={field.step} value={value ?? field.min} onChange={(e) => onChange(Number(e.target.value))} />
-            <output htmlFor={id}>{value}</output>
+            <output htmlFor={id}>{value}{field.unit || ''}</output>
           </div>
         </FieldShell>
       );
