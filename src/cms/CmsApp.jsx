@@ -11,7 +11,7 @@ import { localStorageStore } from './lib/projectsStore.js';
 import { makeShowcaseProject } from './lib/seed.js';
 import { buildHomeTemplate } from './lib/homeTemplate.js';
 
-const SITE_URL = 'https://samuel-prah-portfolio.vercel.app';
+const SITE_URL = 'https://samprah-portfolio.vercel.app';
 const IMPORT_FLAG = 'portfolio.cms.import-dismissed';
 const msg = (e, fallback) => e?.userMessage || fallback;
 
