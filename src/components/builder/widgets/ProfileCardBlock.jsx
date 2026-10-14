@@ -32,6 +32,16 @@ function ProfileCard({ props: p, editing, blockId }) {
   const initials = initialsOf(p.name, p.initials);
   const photo = p.avatarUrl && /^https?:\/\//i.test(p.avatarUrl) ? p.avatarUrl : '';
   const E = { blockId, editing };
+  const hex = (v, d) => (/^#[0-9a-f]{6}$/i.test(v || '') ? v : d);
+  const b1Style = p.btnCustom ? { background: hex(p.btn1Bg, '#2563eb'), color: hex(p.btn1Fg, '#ffffff'), boxShadow: 'none' } : undefined;
+  const b2Style = p.btnCustom
+    ? { color: hex(p.btn2Fg, '#dbeafe'), borderColor: hex(p.btn2Border, '#3b82f6'), background: p.btn2Fill ? hex(p.btn2Bg, '#ffffff') : 'transparent' }
+    : undefined;
+  const avStyle = {
+    ...(p.avatarShape === 'circle' ? { borderRadius: '50%' } : p.avatarShape === 'square' ? { borderRadius: '6px' } : p.avatarShape === 'rounded' ? { borderRadius: '22px' } : {}),
+    ...(p.avatarCustom && !photo ? { background: hex(p.avatarBg, '#1d4ed8'), borderColor: hex(p.avatarBg, '#1d4ed8') } : {}),
+  };
+  const avTextStyle = p.avatarCustom ? { color: hex(p.avatarFg, '#ffffff') } : undefined;
 
   return (
     <article className={`pb-profile is-${p.align || 'left'}`} style={fontScopeStyle(p.font) || undefined} aria-label={`Profile: ${p.name || 'unnamed'}`}>
@@ -52,8 +62,8 @@ function ProfileCard({ props: p, editing, blockId }) {
       {(shown(p, 'avatar') || shown(p, 'name') || shown(p, 'location')) && (
         <div className="pb-profile__who">
           {shown(p, 'avatar') && (
-            <div className="pb-profile__avatar">
-              {photo ? <img src={photo} alt={p.avatarAlt || p.name || ''} referrerPolicy="no-referrer" /> : <span aria-label={`Initials ${initials}`}>{initials}</span>}
+            <div className="pb-profile__avatar" style={avStyle}>
+              {photo ? <img src={photo} alt={p.avatarAlt || p.name || ''} referrerPolicy="no-referrer" /> : <span aria-label={`Initials ${initials}`} style={avTextStyle}>{initials}</span>}
               {live && <button type="button" className="pb-profile__avatar-action" data-inline="true" onClick={() => requestField('avatarUrl')}>Update Photo / Initials</button>}
             </div>
           )}
@@ -81,12 +91,12 @@ function ProfileCard({ props: p, editing, blockId }) {
       {(shown(p, 'btn1') || shown(p, 'btn2')) && (
         <div className="pb-profile__actions">
           {shown(p, 'btn1') && (
-            <LinkWrap href={href1} newTab={isExternalHref(href1)} className="pb-profile__btn is-primary">
+            <LinkWrap href={href1} newTab={isExternalHref(href1)} className={`pb-profile__btn is-primary${p.btnCustom ? ' is-custom' : ''}`} style={b1Style}>
               <Editable {...E} tag="span" field="btn1Text" value={p.btn1Text} maxLength={40} label="Button 1 text" placeholder="Button" />
             </LinkWrap>
           )}
           {shown(p, 'btn2') && (
-            <LinkWrap href={cv} download={cv ? '' : undefined} newTab={false} className="pb-profile__btn is-pill">
+            <LinkWrap href={cv} download={cv ? '' : undefined} newTab={false} className={`pb-profile__btn is-pill${p.btnCustom ? ' is-custom' : ''}`} style={b2Style}>
               <Editable {...E} tag="span" field="btn2Text" value={p.btn2Text} maxLength={40} label="Button 2 text" placeholder="Button" />
             </LinkWrap>
           )}
@@ -107,6 +117,8 @@ export const profileCardWidgets = [
       bio: 'Creative director and designer building brand, event and motion work for campaigns across Ghana and beyond.',
       btn1Text: 'Message me', btn1LinkType: 'url', btn1Url: 'mailto:muelprah@gmail.com', btn1ProjectSlug: '', btn1Anchor: '',
       btn2Text: 'Download CV', cvUrl: '/Samuel_Prah_Creative_Director_CV.docx', cvName: 'Samuel_Prah_Creative_Director_CV.docx',
+      avatarShape: '', avatarCustom: false, avatarBg: '#1d4ed8', avatarFg: '#ffffff',
+      btnCustom: false, btn1Bg: '#2563eb', btn1Fg: '#ffffff', btn2Fill: false, btn2Bg: '#ffffff', btn2Fg: '#111111', btn2Border: '#111111',
       align: 'left', font: '',
     },
     fields: [
@@ -115,6 +127,10 @@ export const profileCardWidgets = [
       { key: 'avatarUrl', label: 'Photo', type: 'media', showIf: (p) => shown(p, 'avatar'), help: 'Upload a photo, pick one from the library or paste a link. With no photo the card shows initials.' },
       { key: 'initials', label: 'Initials (optional)', type: 'text', maxLength: 3, showIf: (p) => shown(p, 'avatar') && !p.avatarUrl, help: 'Leave empty to use the first letters of the name.' },
       { key: 'avatarAlt', label: 'Photo description (alt text)', type: 'text', showIf: (p) => shown(p, 'avatar') && !!p.avatarUrl },
+      { key: 'avatarShape', label: 'Photo shape', type: 'select', options: [['', 'Default'], ['circle', 'Circle'], ['rounded', 'Rounded square'], ['square', 'Square']], showIf: (p) => shown(p, 'avatar') },
+      { key: 'avatarCustom', label: 'Custom initials colours', type: 'toggle', showIf: (p) => shown(p, 'avatar') && !p.avatarUrl },
+      { key: 'avatarBg', label: 'Initials background', type: 'color', showIf: (p) => shown(p, 'avatar') && !p.avatarUrl && !!p.avatarCustom },
+      { key: 'avatarFg', label: 'Initials text', type: 'color', showIf: (p) => shown(p, 'avatar') && !p.avatarUrl && !!p.avatarCustom },
       { key: 'name', label: 'Name', type: 'text', maxLength: 80, showIf: (p) => shown(p, 'name') },
       { key: 'location', label: 'Location', type: 'text', maxLength: 80, showIf: (p) => shown(p, 'location') },
       { key: 'bio', label: 'Bio', type: 'textarea', rows: 5, maxLength: BIO_MAX, showIf: (p) => shown(p, 'bio') },
@@ -122,6 +138,13 @@ export const profileCardWidgets = [
       { key: 'btn1Url', label: 'Primary button link', type: 'link', prefix: 'btn1', showIf: (p) => shown(p, 'btn1'), help: 'Use mailto:you@example.com for an email link, tel: for a phone number, or pick a page.' },
       { key: 'btn2Text', label: 'Secondary button text', type: 'text', maxLength: 40, showIf: (p) => shown(p, 'btn2') },
       { key: 'cvUrl', label: 'CV file', type: 'file', accept: '.pdf,.doc,.docx', nameKey: 'cvName', uploadLabel: 'Upload new file for CV', showIf: (p) => shown(p, 'btn2'), help: 'PDF, DOC or DOCX up to 10 MB. Visitors download it when they click the button.' },
+      { key: 'btnCustom', label: 'Custom button colours', type: 'toggle', showIf: (p) => shown(p, 'btn1') || shown(p, 'btn2'), help: 'Off keeps the default blue styling.' },
+      { key: 'btn1Bg', label: 'Primary button colour', type: 'color', showIf: (p) => !!p.btnCustom && shown(p, 'btn1') },
+      { key: 'btn1Fg', label: 'Primary button text colour', type: 'color', showIf: (p) => !!p.btnCustom && shown(p, 'btn1') },
+      { key: 'btn2Fill', label: 'Fill the secondary button', type: 'toggle', showIf: (p) => !!p.btnCustom && shown(p, 'btn2') },
+      { key: 'btn2Bg', label: 'Secondary button fill', type: 'color', showIf: (p) => !!p.btnCustom && shown(p, 'btn2') && !!p.btn2Fill },
+      { key: 'btn2Fg', label: 'Secondary button text colour', type: 'color', showIf: (p) => !!p.btnCustom && shown(p, 'btn2') },
+      { key: 'btn2Border', label: 'Secondary button outline colour', type: 'color', showIf: (p) => !!p.btnCustom && shown(p, 'btn2') },
       { key: 'align', label: 'Card position', type: 'select', options: [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']] },
     ],
     Render: ProfileCard,

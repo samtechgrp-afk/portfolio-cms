@@ -192,7 +192,7 @@ function FieldControl({ field, value, onChange, owner, onPatch }) {
       );
     case 'toggle':
       return (
-        <div className="bb-field">
+        <div className="bb-field" data-field={field.key}>
           <label className="bb-toggle"><input type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} /><span>{field.label}</span></label>
           {field.help && <p className="cms-hint">{field.help}</p>}
         </div>
