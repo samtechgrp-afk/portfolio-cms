@@ -325,6 +325,13 @@ a.pb-pcard:hover { border-color: var(--pb-accent); }
   background: var(--pf-bg); color: var(--pf-text);
   border: 1px solid rgba(59, 130, 246, 0.4); box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
 }
+.pb-profile.is-themed .pb-profile__text { color: var(--pf-text); }
+.pb-profile.is-themed .pb-profile__status { background: color-mix(in srgb, var(--pf-text) 7%, transparent); border-color: color-mix(in srgb, var(--pf-text) 22%, transparent); }
+.pb-profile.is-themed .pb-profile__loc .pb-icon { color: var(--pf-muted); }
+.pb-profile.is-themed .pb-profile__select option { background: var(--pf-bg); color: var(--pf-text); }
+.pb-profile.is-themed .pb-profile__btn.is-pill:not(.is-custom) { color: var(--pf-text); border-color: color-mix(in srgb, var(--pf-text) 45%, transparent); }
+.pb-profile.is-themed .pb-profile__btn.is-pill:not(.is-custom):hover { background: color-mix(in srgb, var(--pf-text) 8%, transparent); }
+.pb-profile.is-themed .pb-profile__avatar > span { color: var(--pf-text); }
 .pb-profile.is-center { margin-inline: auto; } .pb-profile.is-right { margin-left: auto; }
 .pb-profile__status { display: inline-flex; align-items: center; gap: 10px; align-self: flex-start; padding: 7px 14px 7px 12px; border-radius: 999px; font-size: 14px; font-weight: 600; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.35); }
 .pb-profile__dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }

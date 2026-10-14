@@ -41,10 +41,14 @@ function ProfileCard({ props: p, editing, blockId }) {
     ...(p.avatarShape === 'circle' ? { borderRadius: '50%' } : p.avatarShape === 'square' ? { borderRadius: '6px' } : p.avatarShape === 'rounded' ? { borderRadius: '22px' } : {}),
     ...(p.avatarCustom && !photo ? { background: hex(p.avatarBg, '#1d4ed8'), borderColor: hex(p.avatarBg, '#1d4ed8') } : {}),
   };
+  const cardStyle = p.cardCustom ? {
+    '--pf-bg': hex(p.cardBg, '#ffffff'), '--pf-text': hex(p.cardText, '#111111'), '--pf-muted': hex(p.cardMuted, '#5f6673'),
+    borderColor: hex(p.cardBorder, '#d9dce3'), boxShadow: p.cardGlow ? `0 0 15px ${hex(p.cardBorder, '#d9dce3')}66` : 'none',
+  } : null;
   const avTextStyle = p.avatarCustom ? { color: hex(p.avatarFg, '#ffffff') } : undefined;
 
   return (
-    <article className={`pb-profile is-${p.align || 'left'}`} style={fontScopeStyle(p.font) || undefined} aria-label={`Profile: ${p.name || 'unnamed'}`}>
+    <article className={`pb-profile is-${p.align || 'left'}${p.cardCustom ? ' is-themed' : ''}`} style={{ ...(fontScopeStyle(p.font) || {}), ...(cardStyle || {}) }} aria-label={`Profile: ${p.name || 'unnamed'}`}>
       {shown(p, 'status') && (
         <div className="pb-profile__status">
           <span className="pb-profile__dot" style={{ background: status.color, boxShadow: `0 0 8px ${status.color}` }} aria-hidden="true" />
@@ -118,6 +122,7 @@ export const profileCardWidgets = [
       btn1Text: 'Message me', btn1LinkType: 'url', btn1Url: 'mailto:muelprah@gmail.com', btn1ProjectSlug: '', btn1Anchor: '',
       btn2Text: 'Download CV', cvUrl: '/Samuel_Prah_Creative_Director_CV.docx', cvName: 'Samuel_Prah_Creative_Director_CV.docx',
       avatarShape: '', avatarCustom: false, avatarBg: '#1d4ed8', avatarFg: '#ffffff',
+      cardCustom: false, cardBg: '#ffffff', cardText: '#111111', cardMuted: '#5f6673', cardBorder: '#d9dce3', cardGlow: false,
       btnCustom: false, btn1Bg: '#2563eb', btn1Fg: '#ffffff', btn2Fill: false, btn2Bg: '#ffffff', btn2Fg: '#111111', btn2Border: '#111111',
       align: 'left', font: '',
     },
@@ -138,6 +143,12 @@ export const profileCardWidgets = [
       { key: 'btn1Url', label: 'Primary button link', type: 'link', prefix: 'btn1', showIf: (p) => shown(p, 'btn1'), help: 'Use mailto:you@example.com for an email link, tel: for a phone number, or pick a page.' },
       { key: 'btn2Text', label: 'Secondary button text', type: 'text', maxLength: 40, showIf: (p) => shown(p, 'btn2') },
       { key: 'cvUrl', label: 'CV file', type: 'file', accept: '.pdf,.doc,.docx', nameKey: 'cvName', uploadLabel: 'Upload new file for CV', showIf: (p) => shown(p, 'btn2'), help: 'PDF, DOC or DOCX up to 10 MB. Visitors download it when they click the button.' },
+      { key: 'cardCustom', label: 'Custom card colours', type: 'toggle', help: 'Off keeps the dark neon card.' },
+      { key: 'cardBg', label: 'Card background', type: 'color', showIf: (p) => !!p.cardCustom },
+      { key: 'cardText', label: 'Card text colour', type: 'color', showIf: (p) => !!p.cardCustom },
+      { key: 'cardMuted', label: 'Secondary text colour (location)', type: 'color', showIf: (p) => !!p.cardCustom && shown(p, 'location') },
+      { key: 'cardBorder', label: 'Card outline colour', type: 'color', showIf: (p) => !!p.cardCustom },
+      { key: 'cardGlow', label: 'Glow around the card', type: 'toggle', showIf: (p) => !!p.cardCustom },
       { key: 'btnCustom', label: 'Custom button colours', type: 'toggle', showIf: (p) => shown(p, 'btn1') || shown(p, 'btn2'), help: 'Off keeps the default blue styling.' },
       { key: 'btn1Bg', label: 'Primary button colour', type: 'color', showIf: (p) => !!p.btnCustom && shown(p, 'btn1') },
       { key: 'btn1Fg', label: 'Primary button text colour', type: 'color', showIf: (p) => !!p.btnCustom && shown(p, 'btn1') },
