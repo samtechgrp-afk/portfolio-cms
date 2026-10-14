@@ -163,7 +163,15 @@ Click **Edit home page** on the dashboard. If no `home` project exists yet, it o
 - Videos use a click-to-play poster (Google Drive or YouTube). Galleries support masonry layout and a lightbox.
 - The public site keeps its built-in layout until `home` is **Published**. If the page is missing, a draft, empty or fails to load, the built-in layout is shown.
 
-Widget count: 46.
+Widget count: 47.
+
+## Profile Card block
+Cards > Profile Card. A status badge (Open to remote work, Available for contract, Not looking), avatar or initials, name, location, a bio with a 300-character counter, a primary "Message me" button (link picker) and a "Download CV" pill (upload a PDF/DOC/DOCX or paste a link). The "Show" panel switches each of the seven parts on or off. In the editor you can click text on the card to edit it, change the status from the badge, and hover the avatar for "Update Photo / Initials". The same block renders on the public site, with real links.
+
+## Site settings and favicon
+Projects list > Site settings > Site Icon / Favicon. Upload a PNG, ICO, SVG or JPG (2 MB max) to the `site-assets` bucket, or paste an https link. The icon is saved in the `site_settings` table (row `site`, field `siteIconUrl`) and applied to both `<link rel="icon">` and `<link rel="apple-touch-icon">` in the CMS and on the public site (home and project pages). With no icon set, `/favicon.svg` and `/apple-touch-icon.png` are used.
+
+Supabase additions: table `site_settings` (public read, owner-only write) and public bucket `site-assets` (icons and CV files, owner-only write). Shared files added to the sync list: `components/siteIcon.js`, `components/builder/inlineEdit.jsx`.
 
 ## Font upload notes
 

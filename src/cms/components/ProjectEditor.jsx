@@ -242,7 +242,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
 
         {tab === 'builder' && (
           <div role="tabpanel" id="panel-builder" aria-labelledby="tab-builder">
-            <BuilderContext.Provider value={{ fonts: library.fonts, projects, media: library.media }}>
+            <BuilderContext.Provider value={{ fonts: library.fonts, projects, media: library.media, siteAssets: library.siteAssets }}>
             <div className="bb-workspace">
               <div>
                 <div className="bb-toolbar">
@@ -262,6 +262,7 @@ export default function ProjectEditor({ project, projects, saving, onSave, onCan
                     onToggleHidden={(id) => commit(toggleHidden(blocksRef.current, id))}
                     onDropBlock={(id, target, index) => commit(moveTo(blocksRef.current, id, target, index))}
                     onDelete={(id) => commit(removeBlock(blocksRef.current, id))}
+                    onPatch={(id, patch) => commit(patchProps(blocksRef.current, id, patch))}
                   />
                 </div>
               </div>

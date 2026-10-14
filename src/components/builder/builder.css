@@ -89,3 +89,14 @@
 .bb-grip:active { cursor: grabbing; }
 .bb-dropline { height: 4px; margin: -8px 0; border-radius: 4px; background: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 25%, transparent); }
 .bb-link-input { margin-top: 8px; }
+
+/* inspector helpers for the Profile Card */
+.bb-counter { margin: 4px 0 0; font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.bb-elements { border: 1px solid var(--line); border-radius: 12px; padding: 4px 12px 10px; margin-bottom: 16px; background: color-mix(in srgb, var(--ink) 2%, transparent); }
+.bb-elements > summary { cursor: pointer; font-weight: 700; font-size: 14px; padding: 10px 0; min-height: 44px; display: flex; align-items: center; }
+.bb-elements > summary:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+.bb-elements__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+.bb-file { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 14px; word-break: break-all; }
+.cms-btn.is-disabled { opacity: 0.5; pointer-events: none; }
+/* inline editing on the canvas: the preview ignores the mouse, except for what can be edited */
+.bb-item__preview [data-inline] { pointer-events: auto; }

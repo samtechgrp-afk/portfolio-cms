@@ -30,7 +30,7 @@ export default function MediaField({ field, value, onChange }) {
   const remove = async (it) => { try { await media.remove(it.path); setItems((l) => l.filter((x) => x.path !== it.path)); } catch (e) { setMsg(e.userMessage || e.message); } };
 
   return (
-    <div className="bb-field">
+    <div className="bb-field" data-field={field.key}>
       <label htmlFor={id} className="bb-label">{field.label}</label>
       <input id={id} type="url" inputMode="url" className="cms-input" placeholder="https://" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
       <div className="dp-control" style={{ marginTop: 8 }}>

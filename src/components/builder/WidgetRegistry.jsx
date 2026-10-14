@@ -10,6 +10,7 @@ import { heroCarouselWidget } from './widgets/HeroCarouselBlock.jsx';
 import { bannerWidgets } from './widgets/banner.jsx';
 import { frameWidgets } from './widgets/frame.jsx';
 import { shapeWidgets } from './widgets/shape.jsx';
+import { profileCardWidgets } from './widgets/ProfileCardBlock.jsx';
 import { FONT_FIELD } from './widgets/shared.jsx';
 import { fontScopeStyle } from '../typography.js';
 import { newBlockId } from './blockTree.js';
@@ -40,7 +41,7 @@ export const TEXT_TYPES = FONT_TYPES;
 const withFont = (w) => (FONT_TYPES.has(w.type) ? { ...w, defaults: { ...w.defaults, font: '' }, fields: [...w.fields, FONT_FIELD] } : w);
 
 export const ALL_WIDGETS = [
-  ...frameWidgets, ...layoutWidgets, ...shapeWidgets, ...basicWidgets, ...listWidgets, ...mediaWidgets, heroCarouselWidget, ...heroWidgets, ...bannerWidgets, ...cardWidgets, ...interactiveWidgets, ...codeWidgets,
+  ...frameWidgets, ...layoutWidgets, ...shapeWidgets, ...basicWidgets, ...listWidgets, ...mediaWidgets, heroCarouselWidget, ...heroWidgets, ...bannerWidgets, ...cardWidgets, ...profileCardWidgets, ...interactiveWidgets, ...codeWidgets,
 ].map(withFont);
 export const WIDGETS = Object.fromEntries(ALL_WIDGETS.map((w) => [w.type, w]));
 
@@ -68,7 +69,7 @@ export function BlockView({ block, slot, editing = false, ctx }) {
   if (!w) return <div className="pb-unknown">Unknown block type "{block.type}". It is kept in your data but cannot be shown.</div>;
   const Render = w.Render;
   const props = resolveProps(w, block.props);
-  const node = <Render props={props} slot={slot || (() => null)} editing={editing} ctx={ctx} />;
+  const node = <Render props={props} slot={slot || (() => null)} editing={editing} ctx={ctx} blockId={block.id} />;
   // A block-level font choice applies to everything inside the block.
   const mode = w.paintMode ? w.paintMode(props) : 'css';
   const scope = fontScopeStyle(props.font);

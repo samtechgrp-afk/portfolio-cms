@@ -1,4 +1,4 @@
-import { Fragment, createContext, useContext, useState } from 'react';
+import { Fragment, createContext, useContext, useMemo, useState } from 'react';
 import './page.css';
 import './builder.css';
 import { BlockView, getSlots, getWidget } from './WidgetRegistry.jsx';
@@ -6,6 +6,7 @@ import { Icon } from './icons.jsx';
 import { countNested } from './blockTree.js';
 import { typographyStyle, useTypographyAssets } from '../typography.js';
 import ConfirmDialog from '../../cms/components/ConfirmDialog.jsx';
+import { InlineEditContext } from './inlineEdit.jsx';
 
 const CanvasContext = createContext(null);
 const listKey = (target) => (target ? `${target.parentId}:${target.slot}` : 'root');
@@ -115,13 +116,14 @@ function BlockItem({ block, index, count }) {
   );
 }
 
-export default function BlockCanvas({ blocks, typography, title, fonts = [], projects = [], selectedId, onSelect, onAdd, onMove, onDuplicate, onToggleHidden, onDropBlock, onDelete }) {
+export default function BlockCanvas({ blocks, typography, title, fonts = [], projects = [], selectedId, onSelect, onAdd, onMove, onDuplicate, onToggleHidden, onDropBlock, onDelete, onPatch }) {
   const [pending, setPending] = useState(null);
   const [dragId, setDragId] = useState(null);
   const [drop, setDrop] = useState(null);
   useTypographyAssets(typography, { fonts, blocks });
 
   const requestDelete = (block) => (countNested(block) > 0 ? setPending(block) : onDelete(block.id));
+  const inline = useMemo(() => (onPatch ? { patch: onPatch } : null), [onPatch]);
   const endDrag = () => { setDragId(null); setDrop(null); };
   const value = {
     selectedId, onSelect, onAdd, onMove, onDuplicate, onToggleHidden, onRequestDelete: requestDelete, ctx: { projectTitle: title, projects },
@@ -130,12 +132,14 @@ export default function BlockCanvas({ blocks, typography, title, fonts = [], pro
 
   return (
     <CanvasContext.Provider value={value}>
+      <InlineEditContext.Provider value={inline}>
       <div
         className="pb-page pb-page--edit bb-canvas" style={typographyStyle(typography)} onClick={() => onSelect(null)}
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDrop(null); }}
       >
         <BlockList list={blocks} target={null} />
       </div>
+      </InlineEditContext.Provider>
       <ConfirmDialog
         open={!!pending}
         title="Delete this block?"

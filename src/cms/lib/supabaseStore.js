@@ -37,6 +37,13 @@ const MEDIA_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', we
 const MEDIA_MAX = 8 * 1024 * 1024;
 const mediaUrl = (path) => supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
 
+const SITE_ASSET_MIME = {
+  png: 'image/png', ico: 'image/x-icon', svg: 'image/svg+xml', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
+  pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
+const SITE_ASSET_MAX = 10 * 1024 * 1024;
+const SITE_KEY = 'site';
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function fail(error, fallback) {
@@ -77,6 +84,32 @@ export const supabaseStore = {
   },
   /** Uploads a font file to the public `fonts` bucket. Returns { url, path }. Names are random, so files never overwrite each other. */
   uploadFont: uploadFontFile,
+  /** Global site settings (one row, key 'site'): { siteIconUrl, ... }. Anyone can read them; only the owner can change them. */
+  async getSiteSettings() {
+    const { data, error } = await supabase.from('site_settings').select('value').eq('key', SITE_KEY).maybeSingle();
+    if (error) fail(error, "Couldn't load the site settings.");
+    return data?.value || {};
+  },
+  async saveSiteSettings(patch) {
+    const current = await this.getSiteSettings();
+    const value = { ...current, ...patch };
+    const { error } = await supabase.from('site_settings').upsert({ key: SITE_KEY, value, updated_at: new Date().toISOString() });
+    if (error) fail(error, "Couldn't save the site settings.");
+    return value;
+  },
+  /** Uploads a site icon or a document (CV) to the public `site-assets` bucket. `kind` limits the file types: 'icon' or 'file'. */
+  async uploadSiteAsset(file, kind = 'file') {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const type = SITE_ASSET_MIME[ext];
+    const allowed = kind === 'icon' ? ['png', 'ico', 'svg', 'jpg', 'jpeg'] : ['pdf', 'doc', 'docx'];
+    if (!type || !allowed.includes(ext)) { const e = new Error('Unsupported file type.'); e.userMessage = kind === 'icon' ? 'Use a PNG, ICO, SVG or JPG image.' : 'Use a PDF, DOC or DOCX file.'; throw e; }
+    if (file.size > (kind === 'icon' ? 2 * 1024 * 1024 : SITE_ASSET_MAX)) { const e = new Error('File too large.'); e.userMessage = kind === 'icon' ? 'Icons can be up to 2 MB.' : 'Files can be up to 10 MB.'; throw e; }
+    const path = `${kind}/${crypto.randomUUID()}.${ext}`;
+    const typed = new File([file], file.name, { type });
+    const { error } = await supabase.storage.from('site-assets').upload(path, typed, { contentType: type, cacheControl: '31536000', upsert: false });
+    if (error) fail(error, "Couldn't upload the file.");
+    return { url: supabase.storage.from('site-assets').getPublicUrl(path).data.publicUrl, path, name: file.name };
+  },
   /** Uploads an image to the public `media` bucket (PNG, JPG, WebP, GIF or AVIF up to 8 MB). Returns { url, path, name }. */
   async uploadMedia(file) {
     const ext = (file.name.split('.').pop() || '').toLowerCase();

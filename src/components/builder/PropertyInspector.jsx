@@ -8,10 +8,12 @@ import { CropPreview } from './design/panel/FillStack.jsx';
 import { Icon } from './icons.jsx';
 import { useBuilder } from './BuilderContext.jsx';
 import { LINK_TYPES } from './widgets/shared.jsx';
+import { takePendingField } from './inlineEdit.jsx';
+import { ELEMENTS } from './widgets/ProfileCardBlock.jsx';
 
 function FieldShell({ id, field, children }) {
   return (
-    <div className="bb-field">
+    <div className="bb-field" data-field={field.key}>
       <label htmlFor={id} className="bb-label">{field.label}</label>
       {children}
       {field.help && <p className="cms-hint">{field.help}</p>}
@@ -41,9 +43,14 @@ function FontField({ field, value, onChange }) {
 }
 
 /** One control for a block's link: external URL, project page (/work/slug), a project's live site, or an anchor. Edits several keys at once. */
-function LinkField({ field, owner, onPatch }) {
+/** Link keys: linkType, url, projectSlug, anchor. With `field.prefix` ('btn1') they read btn1LinkType, btn1Url ... so one block can hold several links. */
+function LinkField({ field, owner: rawOwner, onPatch: rawPatch }) {
   const id = useId();
   const { projects } = useBuilder();
+  const pre = field.prefix;
+  const K = (k) => (pre ? pre + k[0].toUpperCase() + k.slice(1) : k);
+  const owner = pre ? { linkType: rawOwner[K('linkType')], url: rawOwner[K('url')], projectSlug: rawOwner[K('projectSlug')], anchor: rawOwner[K('anchor')] } : rawOwner;
+  const onPatch = pre ? (patch) => rawPatch(Object.fromEntries(Object.entries(patch).map(([k, v]) => [K(k), v]))) : rawPatch;
   const type = owner.linkType || 'url';
   const pages = projects.filter((p) => p.slug !== 'home');
   const picked = pages.find((p) => p.slug === owner.projectSlug);
@@ -52,7 +59,7 @@ function LinkField({ field, owner, onPatch }) {
     onPatch(type === 'live' ? { projectSlug: slug, url: project?.liveUrl || '' } : { projectSlug: slug });
   };
   return (
-    <div className="bb-field">
+    <div className="bb-field" data-field={field.key}>
       <label htmlFor={id} className="bb-label">{field.label}</label>
       <select id={id} className="cms-input" value={type} onChange={(e) => onPatch({ linkType: e.target.value })}>
         {LINK_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -80,11 +87,65 @@ function LinkField({ field, owner, onPatch }) {
   );
 }
 
+/** Visual edit tool panel: one switch per part of a block (used by the Profile Card). */
+function ElementsField({ field, value, onChange }) {
+  const v = value || {};
+  return (
+    <details className="bb-elements" open data-field={field.key}>
+      <summary>{field.label}</summary>
+      <div className="bb-elements__grid" role="group" aria-label={field.label}>
+        {ELEMENTS.map(([k, label]) => (
+          <label key={k} className="bb-toggle"><input type="checkbox" checked={v[k] !== false} onChange={(e) => onChange({ ...v, [k]: e.target.checked })} /><span>{label}</span></label>
+        ))}
+      </div>
+      {field.help && <p className="cms-hint">{field.help}</p>}
+    </details>
+  );
+}
+
+/** Upload a document (such as a CV) to the public site-assets bucket, or paste a link. */
+function FileField({ field, owner, onPatch }) {
+  const id = useId();
+  const { siteAssets } = useBuilder();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const url = owner[field.key] || '';
+  const name = (field.nameKey && owner[field.nameKey]) || url.split('/').pop();
+  const pick = async (file) => {
+    if (!file) return;
+    setBusy(true); setMsg('');
+    try { const r = await siteAssets.upload(file, 'file'); onPatch({ [field.key]: r.url, ...(field.nameKey ? { [field.nameKey]: r.name } : {}) }); }
+    catch (e) { setMsg(e.userMessage || e.message || "Couldn't upload the file."); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="bb-field" data-field={field.key}>
+      <label htmlFor={id} className="bb-label">{field.label}</label>
+      {url ? <p className="bb-file" title={url}><Icon name="link" size={14} /> <span>{name || url}</span></p> : <p className="cms-hint">No file yet.</p>}
+      <div className="dp-control">
+        <label className={`cms-btn cms-btn--sm dp-add ${!siteAssets?.enabled || busy ? 'is-disabled' : ''}`}>
+          <Icon name="plus" size={14} /> {busy ? 'Uploading…' : field.uploadLabel || 'Upload file'}
+          <input id={id} type="file" hidden accept={field.accept} disabled={!siteAssets?.enabled || busy} onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
+        {url && <button type="button" className="cms-btn cms-btn--sm" onClick={() => onPatch({ [field.key]: '', ...(field.nameKey ? { [field.nameKey]: '' } : {}) })}>Remove</button>}
+      </div>
+      <input type="url" className="cms-input" style={{ marginTop: 8 }} aria-label={`${field.label} link`} placeholder="…or paste a link to the file" value={url} onChange={(e) => onPatch({ [field.key]: e.target.value, ...(field.nameKey ? { [field.nameKey]: '' } : {}) })} />
+      {!siteAssets?.enabled && <p className="cms-hint">Uploads need the Supabase connection. A pasted link always works.</p>}
+      {msg && <p className="cms-error" role="alert">{msg}</p>}
+      {field.help && <p className="cms-hint">{field.help}</p>}
+    </div>
+  );
+}
+
 function FieldControl({ field, value, onChange, owner, onPatch }) {
   const id = useId();
   switch (field.type) {
     case 'font':
       return <FontField field={field} value={value} onChange={onChange} />;
+    case 'elements':
+      return <ElementsField field={field} value={value} onChange={onChange} />;
+    case 'file':
+      return <FileField field={field} owner={owner} onPatch={onPatch} />;
     case 'media':
       return <MediaField field={field} value={value} onChange={onChange} />;
     case 'crop':
@@ -102,7 +163,8 @@ function FieldControl({ field, value, onChange, owner, onPatch }) {
     case 'textarea':
       return (
         <FieldShell id={id} field={field}>
-          <textarea id={id} className={`cms-input ${field.mono ? 'bb-mono' : ''}`} rows={field.rows || 4} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+          <textarea id={id} className={`cms-input ${field.mono ? 'bb-mono' : ''}`} rows={field.rows || 4} maxLength={field.maxLength} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+          {field.maxLength && <p className="bb-counter" aria-live="polite">{(value ?? '').length} / {field.maxLength} chars</p>}
         </FieldShell>
       );
     case 'number':
@@ -149,7 +211,8 @@ function FieldControl({ field, value, onChange, owner, onPatch }) {
     default: // text, url
       return (
         <FieldShell id={id} field={field}>
-          <input id={id} type={field.type === 'url' ? 'url' : 'text'} inputMode={field.type === 'url' ? 'url' : undefined} className="cms-input" value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+          <input id={id} type={field.type === 'url' ? 'url' : 'text'} inputMode={field.type === 'url' ? 'url' : undefined} className="cms-input" maxLength={field.maxLength} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+          {field.maxLength && field.maxLength > 3 && (value ?? '').length > field.maxLength * 0.8 && <p className="bb-counter">{(value ?? '').length} / {field.maxLength} chars</p>}
         </FieldShell>
       );
   }
@@ -191,6 +254,22 @@ function ListField({ field, value, onChange }) {
 export default function PropertyInspector({ block, onChange, onClose, onDuplicate, onToggleHidden, onDelete }) {
   const [tab, setTab] = useState('content');
   useEffect(() => { setTab('content'); }, [block?.id]);
+  // The canvas can ask for a field to be opened (for example "Update Photo / Initials" on the Profile Card).
+  useEffect(() => {
+    const open = (key) => {
+      if (!key) return;
+      setTab('content');
+      requestAnimationFrame(() => {
+        const box = document.querySelector(`.bb-inspector [data-field="${key}"]`);
+        box?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        box?.querySelector('input,select,textarea,button')?.focus({ preventScroll: true });
+      });
+    };
+    open(takePendingField());
+    const on = (e) => open(takePendingField() || e.detail?.key);
+    window.addEventListener('pb:focus-field', on);
+    return () => window.removeEventListener('pb:focus-field', on);
+  }, [block?.id]);
   if (!block) {
     return (
       <aside className="bb-inspector is-empty" aria-label="Block properties">

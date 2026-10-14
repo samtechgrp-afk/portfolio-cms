@@ -3,6 +3,8 @@ import { ToastProvider, useToast } from './components/Toast.jsx';
 import ProjectList from './components/ProjectList.jsx';
 import ProjectEditor from './components/ProjectEditor.jsx';
 import { FontLibraryPage } from '../components/FontManager.jsx';
+import SiteSettingsPage from './components/SiteSettingsPage.jsx';
+import { useSiteIcon } from '../components/siteIcon.js';
 import { collectUsedFamilies } from '../components/typography.js';
 import Login from './components/Login.jsx';
 import { localStorageStore } from './lib/projectsStore.js';
@@ -20,9 +22,25 @@ function CmsShell({ store, user, onSignOut }) {
   const [saving, setSaving] = useState(false);
   const [importable, setImportable] = useState([]);
   const [fonts, setFonts] = useState([]);
+  const [settings, setSettings] = useState({});
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     store.listFonts?.().then(setFonts).catch((e) => toast.error(msg(e, "Couldn't load the font library.")));
+  }, [store, toast]);
+
+  useEffect(() => {
+    store.getSiteSettings?.().then(setSettings).catch((e) => toast.error(msg(e, "Couldn't load the site settings.")));
+  }, [store, toast]);
+  useSiteIcon(settings.siteIconUrl || ''); // the CMS tab wears the site icon too
+
+  const saveSettings = useCallback(async (patch) => {
+    setSavingSettings(true);
+    try {
+      const next = await store.saveSiteSettings(patch);
+      setSettings(next);
+      toast.success('Site settings saved.');
+    } catch (e) { toast.error(msg(e, "Couldn't save the site settings.")); } finally { setSavingSettings(false); }
   }, [store, toast]);
 
   // The font library, shared by every page. Uploads need the Supabase store.
@@ -30,6 +48,7 @@ function CmsShell({ store, user, onSignOut }) {
     const byName = (a, b) => a.family.localeCompare(b.family) || a.weight - b.weight || a.style.localeCompare(b.style);
     return {
       enabled: !!store.addFont,
+      siteAssets: store.uploadSiteAsset ? { enabled: true, upload: store.uploadSiteAsset.bind(store) } : { enabled: false },
       media: store.uploadMedia ? { enabled: true, upload: store.uploadMedia, list: store.listMedia, remove: store.removeMedia } : { enabled: false },
       fonts,
       add: async (meta) => { const font = await store.addFont(meta); setFonts((all) => [...all, font].sort(byName)); return font; },
@@ -165,6 +184,7 @@ function CmsShell({ store, user, onSignOut }) {
             onCreate={() => setView({ name: 'edit' })}
             onEdit={(project) => setView({ name: 'edit', project })}
             onOpenFonts={() => setView({ name: 'fonts' })}
+            onOpenSettings={() => setView({ name: 'settings' })}
             onEditHome={() => {
               const home = projects.find((p) => p.slug === 'home');
               // First time: start from the current landing page, already converted into blocks.
@@ -175,6 +195,8 @@ function CmsShell({ store, user, onSignOut }) {
             onExport={exportPublished}
             onAddShowcase={addShowcase}
           />
+        ) : view.name === 'settings' ? (
+          <SiteSettingsPage settings={settings} assets={library.siteAssets} saving={savingSettings} onSave={saveSettings} onBack={() => setView({ name: 'list' })} />
         ) : view.name === 'fonts' ? (
           <FontLibraryPage library={library} usageOf={usageOf} onBack={() => setView({ name: 'list' })} />
         ) : (

@@ -70,6 +70,14 @@ export const localStorageStore = {
   async remove(id) {
     write(read().filter((p) => p.id !== id));
   },
+  async getSiteSettings() {
+    try { return JSON.parse(localStorage.getItem('portfolio.cms.site-settings') || '{}'); } catch { return {}; }
+  },
+  async saveSiteSettings(patch) {
+    const value = { ...(await this.getSiteSettings()), ...patch };
+    localStorage.setItem('portfolio.cms.site-settings', JSON.stringify(value));
+    return value;
+  },
   async setStatus(id, status) {
     const next = read().map((p) => (p.id === id ? { ...p, status } : p));
     write(next);
